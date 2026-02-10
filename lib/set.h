@@ -3,15 +3,34 @@
 #include "type.h"
 // Function prototypes
 
-void set_add(void *value, Set *set);
-void set_remove(void *value, Set *set);
-Set *set_union(Set *A, Set *B);
-Set *set_intersection(Set *A, Set *B);
-Set *set_difference(Set *A, Set *B);
-Set *set_symdiff(Set *A, Set *B);
-int sets_equal(Set *a, Set *b, int (*cmp)(const void *, const void *));
+typedef int (*Compare)(const void *, const void *);
+typedef void *(*Clone)(const void *);
+
+typedef struct Set
+{
+   int size;
+   int capacity;
+   void **bucket;
+} Set;
+
+/**
+ * Function: createSet
+ * Allocates and initializes a new Set.
+ *
+ * Returns:
+ * - A pointer to the newly created Set.
+ */
+Set *set_create();
+void set_add(void *value, Set *set, Compare cmp);
+void set_remove(void *value, Set *set, Compare cmp);
+Set *set_union(Set *A, Set *B, Compare cmp, Clone clone);
+Set *set_intersection(Set *A, Set *B, Compare cmp, Clone clone);
+Set *set_difference(Set *A, Set *B, Compare cmp, Clone clone);
+Set *set_symdiff(Set *A, Set *B, Compare cmp, Clone clone);
+int sets_equal(Set *a, Set *b, Compare cmp);
 void set_clear(Set *set);
-int set_has(void *value, Set *set);
+int set_has(void *value, Set *set, Compare cmp);
 int set_len(Set *set);
-Set *set_clone(Set *original);
-#endif // SET_H
+Set *set_clone(Set *original, Compare cmp, Clone clone);
+void set_free(Set *set, void (*freeItem)(void *));
+#endif // SET_H,

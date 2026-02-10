@@ -41,7 +41,7 @@ List *list_create(int size)
 static int list_resize(List *list)
 {
    int newSize = 2 * list->capacity; // Double the list's capacity.
-   void **newList = (void **)realloc(list->items, newSize * sizeof(void *));
+   void **newList = realloc(list->items, newSize * sizeof(void *));
    if (!newList)
       return LIST_ERROR;
 
@@ -49,7 +49,7 @@ static int list_resize(List *list)
    for (int i = list->capacity; i < newSize; i++)
       newList[i] = NULL;
 
-   list->items = newList;
+   list->items = (void **)newList;
    list->capacity = newSize;
    return LIST_SUCCESS;
 }
@@ -111,7 +111,7 @@ int list_insert(List *list, int index, void *value)
    return LIST_SUCCESS;
 }
 
-int list_remove(void *value, List *list)
+int list_remove(void *value, List *list, void (*freeItem)(void *))
 {
    if (!list)
       return LIST_ERROR;
@@ -131,7 +131,7 @@ int list_remove(void *value, List *list)
       return LIST_ERROR;
 
    // Shift left
-   freeData((Data *)list->items[index]);
+   freeItem(list->items[index]);
    for (int i = index; i < list->length - 1; i++)
       list->items[i] = list->items[i + 1];
 
@@ -180,22 +180,22 @@ void list_clear(List *list)
    list->end = -1;
 }
 
-int list_index(void *value, List *list)
+int list_index(void *value, List *list, Compare cmp)
 {
    if (!list)
       return -1;
 
    for (int i = 0; i < list->length; i++)
    {
-      if (list->items[i] == value)
+      if (cmp(list->items[i], value))
          return i;
    }
    return -1;
 }
 
-int list_contains(void *value, List *list)
+int list_has(void *value, List *list, Compare cmp)
 {
-   return list_index(value, list) != -1;
+   return list_index(value, list, cmp) != -1;
 }
 
 List *list_concat(List *a, List *b)
@@ -226,7 +226,7 @@ List *list_repeat(int times, List *list)
    return result;
 }
 
-int lists_equal(List *a, List *b, int (*cmp)(const void *, const void *))
+int lists_equal(List *a, List *b, Compare cmp)
 {
    if (a->length != b->length)
       return 0;
@@ -236,12 +236,12 @@ int lists_equal(List *a, List *b, int (*cmp)(const void *, const void *))
    return 1;
 }
 
-int list_not_equal(List *a, List *b, int (*cmp)(const void *, const void *))
+int list_not_equal(List *a, List *b, Compare cmp)
 {
    return !list_equal(a, b, cmp);
 }
 
-int list_less(List *a, List *b, int (*cmp)(const void *, const void *))
+int list_less(List *a, List *b, Compare cmp)
 {
    int min_len = (a->length < b->length) ? a->length : b->length;
    for (int i = 0; i < min_len; i++)
@@ -255,17 +255,17 @@ int list_less(List *a, List *b, int (*cmp)(const void *, const void *))
    return a->length < b->length;
 }
 
-int list_less_equal(List *a, List *b, int (*cmp)(const void *, const void *))
+int list_less_equal(List *a, List *b, Compare cmp)
 {
    return list_less(a, b, cmp) || list_equal(a, b, cmp);
 }
 
-int list_greater(List *a, List *b, int (*cmp)(const void *, const void *))
+int list_greater(List *a, List *b, Compare cmp)
 {
    return !list_less_equal(a, b, cmp);
 }
 
-int list_greater_equal(List *a, List *b, int (*cmp)(const void *, const void *))
+int list_greater_equal(List *a, List *b, Compare cmp)
 {
    return !list_less(a, b, cmp);
 }
@@ -360,13 +360,6 @@ List *list_sorted(List *list)
    if (!list || list->length == 0)
       return createList(RUNTIME_SIZE);
 
-   if (list->length == 1)
-   {
-      List *result = createList(RUNTIME_SIZE);
-      append(cloneData(list->items[0]), result);
-      return result;
-   }
-
    // Create a new list to hold the sorted result
    List *result = createList(RUNTIME_SIZE);
    if (!result)
@@ -408,11 +401,11 @@ void list_extend(List *src, List *other)
    {
       Data *cloned = cloneData(other->items[i]);
       if (!cloned)
-         return; // Failure to clone
-      if (append(cloned, src) != LIST_SUCCESS)
+         return;
+      if (list_append(cloned, src) != LIST_SUCCESS)
       {
          freeData(cloned);
-         return; // Failure to append
+         return;
       }
    }
 }
@@ -422,7 +415,7 @@ void list_reverse(List *src)
    if (!src)
       return;
 
-   int midpoint = (int)(src->length / 2);
+   int midpoint = src->length / 2;
    int stop = src->end;
 
    for (int start = 0; start < midpoint; start++)
@@ -435,6 +428,42 @@ void list_reverse(List *src)
       src->items[stop] = tmp;
       stop--;
    }
+}
+
+List *list_clone(List *original)
+{
+   if (!original)
+      return NULL;
+
+   List *newList = createList(original->capacity);
+
+   for (int i = 0; i < original->length; i++)
+   {
+      Data *item = original->items[i];
+      list_append(cloneData(item), newList);
+   }
+
+   return newList;
+}
+
+void list_free(List *list, void (*freeItem)(void *))
+{
+   if (!list)
+      return;
+
+   if (freeItem)
+      for (int i = 0; i <= list->end; i++)
+      {
+         if (list->items[i])
+            freeItem(list->items[i]);
+      }
+
+   free(list->items);
+   free(list);
+
+   /************************************************
+    *  caller responsible implementing own freePair
+    ************************************************/
 }
 
 // Example usage in main:

@@ -4,7 +4,7 @@
 #include "./lib/utils.h"
 #include "./lib/dict.h"
 
-Dict *createDict(int size)
+Dict *dict_create(int size)
 {
    Dict *dict = (Dict *)malloc(sizeof(Dict)); // Allocate memory for the dict
    if (!dict)
@@ -93,8 +93,11 @@ int dict_insert(void *key, void *value, Dict *dict)
    return 1;
 }
 
-void *dict_get(void *key, Dict *dict)
+void *dict_get(void *key, Dict *dict, Compare cmp)
 {
+   if (!key || !dict)
+      return NULL;
+
    int index = hash(key) % dict->size; // Compute the hash index for the key
    if (index < 0)
       return NULL;
@@ -103,9 +106,9 @@ void *dict_get(void *key, Dict *dict)
 
    while (pair != NULL) // Traverse the linked list at this bucket
    {
-      if (dataEquals(pair->key, key)) // If the key matches
-         return pair->value;          // Return the associated value
-      pair = pair->next;              // Move to the next pair in the list
+      if (cmp(pair->key, key)) // If the key matches
+         return pair->value;   // Return the associated value
+      pair = pair->next;       // Move to the next pair in the list
    }
 
    return NULL; // If key is not found, return NULL
@@ -148,7 +151,7 @@ void dict_erase(void *key, Dict *dict)
  * @param dict The dict to search
  * @return 1 if the key exists, 0 if the key does not exist
  */
-int dict_has(void *key, Dict *dict)
+int dict_has(void *key, Dict *dict, Compare cmp)
 {
    unsigned long h = hash(key);
    int index = h % dict->size;
@@ -156,9 +159,9 @@ int dict_has(void *key, Dict *dict)
    Pair *pair = dict->buckets[index];
    while (pair != NULL) // Traverse the linked list at this bucket
    {
-      if (dataEquals(pair->key, key)) // If the key matches
-         return 1;                    // Return 1 to indicate the key exists
-      pair = pair->next;              // Move to the next pair in the list
+      if (cmp(pair->key, key)) // If the key matches
+         return 1;             // Return 1 to indicate the key exists
+      pair = pair->next;       // Move to the next pair in the list
    }
    return 0; // Return 0 if the key does not exist
 }
@@ -239,7 +242,7 @@ void *dict_items(Dict *dict)
    return items;
 }
 
-void *dict_pop(void *key, Dict *dict)
+void *dict_pop(void *key, Dict *dict, Compare cmp)
 {
    int index = hash(key) % dict->size;
    if (index == -1)
@@ -250,7 +253,7 @@ void *dict_pop(void *key, Dict *dict)
 
    while (pair)
    {
-      if (dataEquals(pair->key, key))
+      if (cmp(pair->key, key))
       {
          if (prev)
             prev->next = pair->next;
@@ -267,6 +270,7 @@ void *dict_pop(void *key, Dict *dict)
       prev = pair;
       pair = pair->next;
    }
+
    return NULL;
 }
 
@@ -285,7 +289,7 @@ void dict_update(Dict *dest, Dict *src)
    }
 }
 
-int dicts_equal(Dict *a, Dict *b, int (*cmp)(const void *, const void *))
+int dicts_equal(Dict *a, Dict *b, Compare cmp)
 {
    if (a->capacity != b->capacity)
       return 0;
@@ -313,7 +317,7 @@ int dicts_equal(Dict *a, Dict *b, int (*cmp)(const void *, const void *))
    return 1;
 }
 
-Dict *dict_clone(Dict *original)
+Dict *dict_clone(Dict *original, Clone clone)
 {
    if (!original)
       return NULL;
@@ -327,10 +331,30 @@ Dict *dict_clone(Dict *original)
       Pair *pair = original->buckets[i];
       while (pair != NULL)
       {
-         // Insert the same Data* (shallow copy)
-         insert(pair->key, cloneData(pair->value), copy);
+         dict_insert(clone(pair->key), clone(pair->value), copy);
          pair = pair->next;
       }
    }
    return copy;
+}
+
+int dict_setdefault(void *key, void *def_val, Dict *dict)
+{
+   return dict_insert(key, def_val, dict);
+}
+
+void dict_free(Dict *dict, void (*freePair)(void *))
+{
+   if (!dict)
+      return;
+
+   for (int i = 0; i < dict->size; i++)
+      freePair((Pair *)dict->buckets[i]);
+
+   free(dict->buckets);
+   free(dict);
+
+   /************************************************
+    *  caller responsible implementing own freePair
+    ************************************************/
 }

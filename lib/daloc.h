@@ -3,8 +3,18 @@
 
 #include "type.h"
 
+typedef enum
+{
+   TYPE_DATA,
+   TYPE_PARAMINFO,
+   TYPE_STATEMENT,
+   TYPE_NODATA,
+   TYPE_ENV,
+   TYPE_ASTs
+} ListType;
+
 /* Function prototypes */
-void freeData(Data *d);
+void data_free(void *d);
 // void freeList(List *list, ListType type);
 // void freeDict(Dict *dict);
 // void freeParamInfo(ParamInfo *info);

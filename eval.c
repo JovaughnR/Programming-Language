@@ -16,34 +16,10 @@
 double floorDivision(double val1, double val2);
 double divide(double val1, double val2);
 double modulo(double val1, double val2);
-Instance *handleUnaryOperation(ASTnode *tree, Instance *operand);
+Instance *handleUnaryOperation(Instance *operand, Operator op);
 Instance *handleBinaryOperation(Instance *x, Instance *y, Operator op);
 
-int matchTypesAnyOrder(Instance *a, Instance *b, DataType t1, DataType t2)
-{
-   if (!a || !b)
-      return 0;
-   return (a->type == t1 && b->type == t2) ||
-          (a->type == t2 && b->type == t1);
-}
-
-/**
- * Generic comparator for Instance objects.
- *
- * @param a Pointer to first Instance object.
- * @param b Pointer to second Instance object.
- * @return <0 if a < b, 0 if a == b, >0 if a > b
- */
-
-/**
- * Evaluates a string operation.
- *
- * @param s1 First string.
- * @param s2 Second string.
- * @param op Operator to apply.
- * @return Pointer to resulting Instance object.
- */
-Instance *evalString(char *s1, char *s2, Operator op)
+static Instance *evalString(char *s1, char *s2, Operator op)
 {
    int resultBool;
    Instance *res = NULL;
@@ -51,34 +27,30 @@ Instance *evalString(char *s1, char *s2, Operator op)
    switch (op)
    {
    case PLUS:
-      res = createInstance(TYPE_STR, concat(s1, s2));
+      res = createInstance(TYPE_STR, str_concat(s1, s2));
       break;
    case EQUAL:
-      resultBool = isSameString(s1, s2);
+      resultBool = strcmp(s1, s2) == 0;
       res = createInstance(TYPE_BOOL, &resultBool);
       break;
    case NEQ:
-      resultBool = !isSameString(s1, s2);
+      resultBool = strcmp(s1, s2) != 0;
       res = createInstance(TYPE_BOOL, &resultBool);
       break;
    case GRT:
-      resultBool = lexicographicalCompare(s1, s2) > 0;
+      resultBool = str_lexicographical_compare(s1, s2) > 0;
       res = createInstance(TYPE_BOOL, &resultBool);
       break;
    case LST:
-      resultBool = lexicographicalCompare(s1, s2) < 0;
+      resultBool = str_lexicographical_compare(s1, s2) < 0;
       res = createInstance(TYPE_BOOL, &resultBool);
       break;
    case GEQ:
-      resultBool = lexicographicalCompare(s1, s2) >= 0;
+      resultBool = str_lexicographical_compare(s1, s2) >= 0;
       res = createInstance(TYPE_BOOL, &resultBool);
       break;
    case LEQ:
-      resultBool = lexicographicalCompare(s1, s2) <= 0;
-      res = createInstance(TYPE_BOOL, &resultBool);
-      break;
-   case INTO:
-      resultBool = isSubstring(s1, s2);
+      resultBool = str_lexicographical_compare(s1, s2) <= 0;
       res = createInstance(TYPE_BOOL, &resultBool);
       break;
    default:
@@ -88,15 +60,7 @@ Instance *evalString(char *s1, char *s2, Operator op)
    return res;
 }
 
-/**
- * Evaluates a numeric expression between two doubles using the given operator.
- *
- * @param v1 First operand.
- * @param v2 Second operand.
- * @param op Operator to apply.
- * @return Pointer to resulting Instance object.
- */
-Instance *evalExpression(double v1, double v2, Operator op)
+static Instance *evalExpression(double v1, double v2, Operator op)
 {
    double *resPtr = malloc(sizeof(double));
    if (!resPtr)
@@ -180,16 +144,7 @@ Instance *evalExpression(double v1, double v2, Operator op)
    return createInstance(TYPE_FLOAT, resPtr);
 }
 
-/**
- * Evaluates a list operation based on the operator.
- *
- * @param l1 Pointer to the first list (List).
- * @param l2 Pointer to the second list.
- * @param op Operator to apply.
- * @param cmp Comparator function for list elements.
- * @return Pointer to resulting Instance object.
- */
-Instance *evalList(List *l1, List *l2, Operator op, int (*cmp)(const void *, const void *))
+static Instance *evalList(List *l1, List *l2, Operator op, int (*cmp)(const void *, const void *))
 {
    switch (op)
    {
@@ -213,7 +168,7 @@ Instance *evalList(List *l1, List *l2, Operator op, int (*cmp)(const void *, con
    }
 }
 
-Instance *handleNumericOperation(Instance *x, Instance *y, Operator op)
+static Instance *handleNumericOperation(Instance *x, Instance *y, Operator op)
 {
    double v1 = valueToFloat(x);
    double v2 = valueToFloat(y);
@@ -241,63 +196,22 @@ Instance *handleNumericOperation(Instance *x, Instance *y, Operator op)
 
    return result;
 }
-/**
- * Handles list operations: concatenation, repetition, comparisons.
- *
- * @param left Pointer to the left operand Instance.
- * @param right Pointer to the right operand Instance.
- * @param op Operator.
- * @return New Instance object containing the result.
- */
-Instance *handleListOperation(Instance *a, Instance *b, Operator op)
+
+static Instance *evalSet(Set *s1, Set *s2, Operator op)
 {
-   // Determine which operand is list and which is int (for repetition)
-   if (isSameType(a, b))
-      return evalList((List *)a->ref->object, (List *)b->ref->object, op, instanceCompare);
+   Compare cmp = instanceCompare;
+   Clone cln = cloneInstance;
 
-   if (op == INTO)
-      return createInstance(TYPE_BOOL, &(int){list_contains(a, list_ptr(b))});
-
-   List *list = a->type == TYPE_LIST ? (List *)a->ref->object : (List *)b->ref->object;
-   double times = a->type == TYPE_LIST ? valueToFloat(b) : valueToFloat(a);
-   List *replicated = list_repeat(list, (int)times);
-
-   return createInstance(TYPE_LIST, replicated);
-}
-
-/**
- * Handles string operations: concatenation, repetition, and comparisons.
- *
- * @param left Pointer to the left operand Instance.
- * @param right Pointer to the right operand Instance.
- * @param op Operator.
- * @return New Instance object containing the result.
- */
-Instance *handleStringOperation(Instance *a, Instance *b, Operator op)
-{
-   if (matchTypesAnyOrder(a, b, TYPE_STR, TYPE_STR))
-      return evalString(a->string, b->string, op);
-
-   // String repetition
-   char *s = a->type == TYPE_STR ? a->string : b->string;
-   double times = a->type == TYPE_STR ? valueToFloat(b) : valueToFloat(a);
-   char *replicated = replicateString(s, (int)times);
-
-   return createInstance(TYPE_STR, replicated);
-}
-
-Instance *evalSet(Set *s1, Set *s2, Operator op)
-{
    switch (op)
    {
-   case BIT_AND:
-      return createInstance(TYPE_SET, set_intersection(s1, s2));
-   case MINUS:
-      return createInstance(TYPE_SET, set_difference(s1, s2));
-   case XOR:
-      return createInstance(TYPE_SET, set_symdiff(s1, s2));
    case BIT_OR:
-      return createInstance(TYPE_SET, set_union(s1, s2));
+      return createInstance(TYPE_SET, set_union(s1, s2, cmp, cln));
+   case MINUS:
+      return createInstance(TYPE_SET, set_difference(s1, s2, cmp, cln));
+   case XOR:
+      return createInstance(TYPE_SET, set_symdiff(s1, s2, cmp, cln));
+   case BIT_AND:
+      return createInstance(TYPE_SET, set_intersection(s1, s2, cmp, cln));
    default:
       fprintf(stderr, "Error: Unsupported operator for sets\n");
       return createInstance(TYPE_NONE, NULL);
@@ -311,15 +225,10 @@ Instance *evalSet(Set *s1, Set *s2, Operator op)
  * @param operand Pointer to the evaluated operand Instance.
  * @return Pointer to resulting Instance object.
  */
-Instance *handleUnaryOperation(ASTnode *tree, Instance *operand)
+Instance *handleUnaryOperation(Instance *operand, Operator op)
 {
-   if (!tree->data || tree->data->type != TYPE_OPERATOR)
-   {
-      fprintf(stderr, "Error: Invalid unary operator\n");
-      return createInstance(TYPE_NONE, NULL);
-   }
-
-   Operator op = *(Operator *)tree->data->op; // Fixed: dereference the operator pointer
+   if (!operand)
+      return NULL;
 
    if (op == NOT)
    {
@@ -327,8 +236,68 @@ Instance *handleUnaryOperation(ASTnode *tree, Instance *operand)
       return createInstance(TYPE_BOOL, &boolVal);
    }
 
-   fprintf(stderr, "Error: Unsupported unary operator\n");
+   if (op == BIT_NOT)
+   {
+      if (operand->type != TYPE_INT)
+      {
+         throw_error(ERROR_TYPE, "bad operand type for unary ~: '%s'",
+                     getDataType(operand->type));
+         return NULL;
+      }
+
+      int value = *(int *)operand->integer;
+      return createInstance(TYPE_INT, &(int){~value});
+   }
+
+   return NULL;
+}
+
+static Instance *handleIntoOperation(Instance *x, Instance *y)
+{
+   if (!x || !y)
+      return createInstance(TYPE_NONE, NULL);
+
+   if (x->type == TYPE_STR && y->type == TYPE_STR)
+      return createInstance(TYPE_BOOL, str_is_substr(x->string, y->string));
+
+   Compare cmp = instanceCompare;
+
+   switch (y->type)
+   {
+   case TYPE_DICT:
+      return createInstance(TYPE_BOOL, &(int){dict_has(x, DICT_PTR(y), cmp)});
+
+   case TYPE_LIST:
+      return createInstance(TYPE_BOOL, &(int){list_has(x, LIST_PTR(y), cmp)});
+
+   case TYPE_SET:
+      return createInstance(TYPE_BOOL, &(int){set_has(x, SET_PTR(y), cmp)});
+   default:
+      break;
+   }
+
    return createInstance(TYPE_NONE, NULL);
+}
+
+static Instance *handleReplication(Instance *x, Instance *y)
+{
+   Instance *inst = isNumeric(x->type) ? y : x;
+   double times = isNumeric(x->type) ? valueToFloat(x) : valueToFloat(y);
+
+   if ((int)times != times)
+      throw_error(ERROR_TYPE, "can't multiply sequence with non-integer");
+
+   switch (inst->type)
+   {
+   case TYPE_LIST:
+      return createInstance(TYPE_LIST, list_repeat((int)times, LIST_PTR(inst)));
+
+   case TYPE_STR:
+      return createInstance(TYPE_STR, str_replicate((int)times, inst->string));
+
+   default:
+      return createInstance(TYPE_NONE, NULL);
+   }
 }
 
 /**
@@ -341,48 +310,46 @@ Instance *handleUnaryOperation(ASTnode *tree, Instance *operand)
  */
 Instance *handleBinaryOperation(Instance *x, Instance *y, Operator op)
 {
-   Instance *result = NULL;
-
-   // TODO into operation for other Instance types
-   if (op == INTO)
+   switch (x->type)
    {
-      if (y->type == TYPE_DICT)
-         return createInstance(TYPE_BOOL, &(int){dict_has(x, dict_ptr(y))});
+   case TYPE_INT:
+   case TYPE_BOOL:
+   case TYPE_FLOAT:
+      if ((y->type == TYPE_LIST || y->type == TYPE_STR) && op == MULTIPLY)
+         return handleReplication(x, y);
+      if (!isNumeric(y->type))
+         break;
+      else
+         return handleNumericOperation(x, y, op);
 
-      if (y->type == TYPE_SET)
-         return createInstance(TYPE_BOOL, &(int){set_has(x, set_ptr(y))});
+   case TYPE_LIST:
+      if (isNumeric(y->type) && op == MULTIPLY)
+         return handleReplication(x, y);
+      if (y->type != TYPE_LIST)
+         break;
+      else
+         return evalList(LIST_PTR(x), LIST_PTR(y), op, instanceCompare);
+
+   case TYPE_SET:
+      if (y->type != TYPE_SET)
+         break;
+      return evalSet(SET_PTR(x), SET_PTR(y), op);
+
+   case TYPE_STR:
+      if (isNumeric(y->type) && op == MULTIPLY)
+         return handleReplication(x, y);
+      if (y->type != TYPE_STR)
+         break;
+      return evalString(x->string, y->string, op);
+
+   default:
+      break;
    }
-
-   if ((isSameType(x, y) && isInstance(x, TYPE_STR)) ||
-       matchTypesAnyOrder(x, y, TYPE_STR, TYPE_INT) ||
-       matchTypesAnyOrder(x, y, TYPE_STR, TYPE_BOOL))
-   {
-      result = handleStringOperation(x, y, op);
-   }
-
-   // Numeric operations
-   else if (isNumeric(x->type) && isNumeric(y->type))
-      result = handleNumericOperation(x, y, op);
-
-   // List operations
-   else if ((isSameType(x, y) && isInstance(x, TYPE_LIST)) ||
-            matchTypesAnyOrder(x, y, TYPE_LIST, TYPE_INT) ||
-            matchTypesAnyOrder(x, y, TYPE_LIST, TYPE_BOOL))
-   {
-      result = handleListOperation(x, y, op);
-   }
-
-   // Set operations
-   else if (isSameType(x, y) && isInstance(x, TYPE_SET))
-      result = evalSet(set_ptr(x), set_ptr(y), op);
-
-   else
-   {
-      fprintf(stderr, "Error: unsupported type combination (left: %d, right: %d)\n",
-              x->type, y->type);
-      result = createInstance(TYPE_NONE, NULL);
-   }
-   return result;
+   throw_error(ERROR_TYPE,
+               "unsupported operand type(s) for %s: '%s' and '%s'",
+               getOperator(op), getDataType(x->type),
+               getDataType(y->type));
+   return createInstance(TYPE_NONE, NULL);
 }
 
 /**
@@ -424,12 +391,12 @@ double floorDivision(double val1, double val2)
    return floor(val1 / val2);
 }
 
-void evalListInDepth(Instance *listObj, Runtime *rt, ExecFn exec)
+Instance *evalListInDepth(Instance *list_instance, Runtime *rt, ExecFn exec)
 {
-   if (listObj->ref->isEvaluated)
-      return;
+   if (list_instance->ref->isEvaluated)
+      return list_instance;
 
-   List *list = list_ptr(listObj);
+   List *list = LIST_PTR(list_instance);
    List *newList = createList(RUNTIME_SIZE);
 
    for (int i = 0; i < list->length; i++)
@@ -443,50 +410,53 @@ void evalListInDepth(Instance *listObj, Runtime *rt, ExecFn exec)
    free(list->items);
    free(list);
 
-   listObj->ref->object = newList;
-   listObj->ref->isEvaluated = 1;
+   list_instance->ref->object = newList;
+   list_instance->ref->isEvaluated = 1;
+   return list_instance;
 }
 
-void evalSetInDepth(Instance *set, Runtime *rt, ExecFn exec)
+Instance *evalSetInDepth(Instance *set_instance, Runtime *rt, ExecFn exec)
 {
-   if (set->ref->isEvaluated)
+   if (set_instance->ref->isEvaluated)
       return;
 
    Set *evaluatedSet = createSet();
-   List *setItems = (List *)set->ref->object;
+   List *setItems = (List *)set_instance->ref->object;
 
    for (int i = 0; i < setItems->length; i++)
    {
       ASTnode *ast = (ASTnode *)setItems->items[i];
       Instance *item = exec(ast, rt);
       freeAST(ast);
-      set_add(item, evaluatedSet);
+      set_add(item, evaluatedSet, instanceCompare);
    }
 
    free(setItems->items);
    free(setItems);
-   set->ref->object = evaluatedSet;
-   set->ref->isEvaluated = 1;
+
+   set_instance->ref->object = evaluatedSet;
+   set_instance->ref->isEvaluated = 1;
+   return set_instance;
 }
 
-void evalDictInDepth(Instance *dict, Runtime *rt, ExecFn exec)
+Instance *evalDictInDepth(Instance *dict_instance, Runtime *rt, ExecFn exec)
 {
-   if (dict->ref->isEvaluated)
+   if (dict_instance->ref->isEvaluated)
       return;
 
    Dict *evaluatedDict = createDict(256);
-   List *dictItems = (List *)dict->ref->object;
+   List *dictItems = (List *)dict_instance->ref->object;
 
    for (int i = 0; i < dictItems->length; i++)
    {
-      Pair *pair = (Pair *)dictItems->items[i]; // Access by index, don't pop
+      Pair *pair = (Pair *)dictItems->items[i];
 
       // Evaluate key and value
-      Instance *evaluatedKey = exec((ASTnode *)pair->key, rt);
-      Instance *evaluatedValue = exec((ASTnode *)pair->value, rt);
+      Instance *key = exec((ASTnode *)pair->key, rt);
+      Instance *value = exec((ASTnode *)pair->value, rt);
 
       // Insert into the new evaluated dict
-      insert(evaluatedKey, evaluatedValue, evaluatedDict);
+      dict_insert(key, value, evaluatedDict);
 
       // Free the original AST nodes (they're separate allocations)
       freeAST((ASTnode *)pair->key);
@@ -499,6 +469,7 @@ void evalDictInDepth(Instance *dict, Runtime *rt, ExecFn exec)
    free(dictItems->items);
    free(dictItems);
 
-   dict->ref->object = evaluatedDict;
-   dict->ref->isEvaluated = 1;
+   dict_instance->ref->object = evaluatedDict;
+   dict_instance->ref->isEvaluated = 1;
+   return dict_instance;
 }

@@ -8,11 +8,17 @@ int isInt(Data *value);
 int isInteger(double value);
 int isNumeric(DataType type);
 int isHashable(DataType type);
-int isInstance(Instance *a, DataType type);
-int isSameType(Instance *a, Instance *b);
-double valueToFloat(Instance *instance);
+int isInstance(Data *a, DataType type);
+int isSameType(Data *a, Data *b);
+double valueToFloat(Data *instance);
 unsigned long hash(void *key);
-int instanceCompare(const Instance *a, const Instance *b);
 int dataCompare(Data *a, Data *b);
+int saveInEnvironment(Data *key, Data *value, Environment *env);
+Data *getData(Data *key, Environment *env);
+Environment *findEnclosingScope(Data *name, Runtime *rt);
+size_t seqlen(const Data *obj);
+int validateIndex(Data *index, Data *obj);
+Data *getAttribute(Data *object, Data *name);
+void setAttribute(Data *object, Data *attrName, Data *value);
 
 #endif

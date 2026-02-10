@@ -1,10 +1,20 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "./lib/utils.h"
 #include "./lib/set.h"
 #include "daloc.h" // Add this include for freeData
 #include "maloc.h"
+
+Set *set_create()
+{
+   Set *set = (Set *)malloc(sizeof(Set));
+   set->capacity = 0;
+
+   // Allocate memory for the hash table (bucket array).
+   set->bucket = (void **)calloc(256, sizeof(void *));
+   set->size = 256;
+   return set;
+}
 
 /**
  * Function: resizeset
@@ -40,7 +50,7 @@ static void set_resize(Set *set, int new_size)
    set->size = new_size;
 }
 
-void set_add(void *value, Set *set)
+void set_add(void *value, Set *set, Compare cmp)
 {
    if (!set)
       return;
@@ -55,7 +65,7 @@ void set_add(void *value, Set *set)
    {
       // already exists
       if (set->bucket[idx] != TOMBSTONE &&
-          instanceCompare(value, set->bucket[idx]))
+          cmp(value, set->bucket[idx]))
          return;
 
       idx = (idx + 1) % set->size;
@@ -73,7 +83,7 @@ void set_add(void *value, Set *set)
  * - value: The value to remove.
  * - set: The Set from which the value will be removed.
  */
-void set_remove(void *value, Set *set)
+void set_remove(void *value, Set *set, Compare cmp)
 {
    unsigned long h = hash(value);
    int idx = h % set->size;
@@ -82,7 +92,7 @@ void set_remove(void *value, Set *set)
    while (set->bucket[idx])
    {
       if (set->bucket[idx] != TOMBSTONE &&
-          instanceComparator(value, set->bucket[idx]))
+          cmp(value, set->bucket[idx]))
       {
          set->bucket[idx] = TOMBSTONE;
          set->capacity--;
@@ -97,65 +107,65 @@ void set_remove(void *value, Set *set)
    fprintf(stderr, "KeyError: element not found in set\n");
 }
 
-Set *set_union(Set *A, Set *B)
+Set *set_union(Set *A, Set *B, Compare cmp, Clone clone)
 {
-   Set *res = createSet();
+   Set *res = set_create();
 
    for (int i = 0; i < A->size; i++)
       if (A->bucket[i] && A->bucket[i] != TOMBSTONE)
-         set_add(cloneData(A->bucket[i]), res);
+         set_add(clone(A->bucket[i]), res, cmp);
 
    for (int i = 0; i < B->size; i++)
       if (B->bucket[i] && B->bucket[i] != TOMBSTONE)
-         set_add(cloneData(B->bucket[i]), res);
+         set_add(clone(B->bucket[i]), res, cmp);
 
    return res;
 }
 
-Set *set_intersection(Set *A, Set *B)
+Set *set_intersection(Set *A, Set *B, Compare cmp, Clone clone)
 {
    Set *res = createSet();
 
    for (int i = 0; i < A->size; i++)
       if (A->bucket[i] && A->bucket[i] != TOMBSTONE)
-         if (set_has(A->bucket[i], B))
-            set_add(cloneData(A->bucket[i]), res);
+         if (set_has(A->bucket[i], B, cmp))
+            set_add(clone(A->bucket[i]), res, cmp);
 
    return res;
 }
 
-Set *set_difference(Set *A, Set *B)
+Set *set_difference(Set *A, Set *B, Compare cmp, Clone clone)
 {
    Set *res = createSet();
 
    for (int i = 0; i < A->size; i++)
       if (A->bucket[i] && A->bucket[i] != TOMBSTONE)
-         if (!set_has(A->bucket[i], B))
-            set_add(cloneData(A->bucket[i]), res); // Fixed argument order
+         if (!set_has(A->bucket[i], B, cmp))
+            set_add(clone(A->bucket[i]), res, cmp); // Fixed argument order
 
    return res;
 }
 
-Set *set_symdiff(Set *A, Set *B)
+Set *set_symdiff(Set *A, Set *B, Compare cmp, Clone clone)
 {
    Set *res = createSet();
 
    // A - B
    for (int i = 0; i < A->size; i++)
       if (A->bucket[i] && A->bucket[i] != TOMBSTONE)
-         if (!set_has(A->bucket[i], B))
-            set_add(cloneData(A->bucket[i]), res); // Fixed argument order
+         if (!set_has(A->bucket[i], B, cmp))
+            set_add(clone(A->bucket[i]), res, cmp); // Fixed argument order
 
    // B - A
    for (int i = 0; i < B->size; i++)
       if (B->bucket[i] && B->bucket[i] != TOMBSTONE)
-         if (!set_has(B->bucket[i], A))
-            set_add(cloneData(B->bucket[i]), res); // Fixed argument order
+         if (!set_has(B->bucket[i], A, cmp))
+            set_add(clone(B->bucket[i]), res, cmp); // Fixed argument order
 
    return res;
 }
 
-int sets_equal(Set *a, Set *b, int (*cmp)(const void *, const void *))
+int sets_equal(Set *a, Set *b, Compare cmp)
 {
    if (a->capacity != b->capacity)
       return 0;
@@ -189,7 +199,7 @@ void set_clear(Set *set)
    set->capacity = 0;
 }
 
-int set_has(void *value, Set *set)
+int set_has(void *value, Set *set, Compare cmp)
 {
    unsigned long h = hash(value);
    int idx = h % set->size;
@@ -198,7 +208,7 @@ int set_has(void *value, Set *set)
    while (set->bucket[idx])
    {
       if (set->bucket[idx] != TOMBSTONE &&
-          instanceComparator(value, set->bucket[idx]))
+          cmp(value, set->bucket[idx]))
          return 1;
 
       idx = (idx + 1) % set->size;
@@ -213,7 +223,7 @@ int set_len(Set *set)
    return set->capacity;
 }
 
-Set *set_clone(Set *original)
+Set *set_clone(Set *original, Compare cmp, Clone clone)
 {
    if (!original)
       return NULL;
@@ -226,10 +236,38 @@ Set *set_clone(Set *original)
    {
       Data *value = original->bucket[i];
       if (value && value != TOMBSTONE)
-         set_add(cloneData(value), copy);
+         set_add(clone(value), copy, cmp);
    }
 
    return copy;
+}
+
+void set_free(Set *set, void (*freeItem)(void *))
+{
+   if (!set)
+      return;
+
+   // Free all elements in the set
+   for (int i = 0; i < set->size; i++)
+   {
+      void *elem = set->bucket[i];
+      if (elem && elem != TOMBSTONE)
+      {
+         freeItem(elem);
+         set->bucket[i] = NULL; // Prevent double-free
+      }
+   }
+
+   // Free the bucket array
+   free(set->bucket);
+   set->bucket = NULL;
+
+   // Free the set structure itself
+   free(set);
+
+   /************************************************
+    *  caller responsible implementing own freeItem
+    ************************************************/
 }
 
 // int main(void)

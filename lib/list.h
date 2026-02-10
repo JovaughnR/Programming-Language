@@ -13,6 +13,8 @@ typedef struct List
    int capacity;
 } List;
 
+typedef int (*Compare)(const void *, const void *);
+
 /**
  * Creates a new list with an initial capacity of 10.
  *
@@ -64,7 +66,7 @@ int list_insert(List *list, int index, void *value);
  *
  * @return LIST_SUCCESS if removed, LIST_ERROR if not found or list is NULL.
  */
-int list_remove(void *value, List *list);
+int list_remove(void *value, List *list, void (*freeItem)(void *));
 /**
  * Retrieves the value at a given index (like Python list[index]).
  *
@@ -108,7 +110,7 @@ void list_clear(List *list);
  *
  * @return Index of the element, or -1 if not found.
  */
-int list_index(void *value, List *list);
+int list_index(void *value, List *list, Compare cmp);
 /**
  * Checks whether a value exists in the List .
  *
@@ -117,7 +119,7 @@ int list_index(void *value, List *list);
  *
  * @return 1 if found, 0 otherwise.
  */
-int list_contains(void *value, List *list);
+int list_has(void *value, List *list, Compare cmp);
 
 List *list_concat(List *a, List *b);
 
@@ -176,7 +178,7 @@ int list_less_equal(List *a, List *b, int (*cmp)(const void *, const void *));
  * @param cmp Comparator function for elements.
  * @return 1 if a > b, 0 otherwise.
  */
-int list_greater(List *a, List *b, int (*cmp)(const void *, const void *));
+int list_greater(List *a, List *b, Compare cmp);
 /**
  * Lexicographically compares two lists (like Python list1 >= list2).
  *
@@ -185,11 +187,15 @@ int list_greater(List *a, List *b, int (*cmp)(const void *, const void *));
  * @param cmp Comparator function for elements.
  * @return 1 if a >= b, 0 otherwise.
  */
-int list_greater_equal(List *a, List *b, int (*cmp)(const void *, const void *));
+int list_greater_equal(List *a, List *b, Compare cmp);
 
 List *list_sorted(List *list);
 
-List *list_extend(List *list, List *other);
+void list_extend(List *src, List *other);
+
+void list_reverse(List *src);
 
 List *list_clone(List *original);
+
+void list_free(List *list, void (*freeItem)(void *));
 #endif

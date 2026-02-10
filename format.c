@@ -1,9 +1,16 @@
 #include <string.h>
 #include <stdio.h>
+#include "./lib/list.h"
+#include "./lib/dict.h"
 #include "./lib/type.h"
+#include "./lib/built.h"
+#include "./lib/set.h"
+#include "./lib/utils.h"
+#include "./lib/format.h"
+#include "./lib/error.h"
 
 // Function Prototypes
-static char *instanceToRepr(Instance *inst);
+static char *dataToRepr(Data *data);
 
 const char *getDataType(DataType type)
 {
@@ -31,22 +38,63 @@ const char *getDataType(DataType type)
       return "range";
    case TYPE_CLASS:
       return "class";
-   case TYPE_INSTANCE:
-      return "instance";
-   case TYPE_INVOKED:
-      return "invoked";
-   case TYPE_OPERATOR:
-      return "operator";
-   case TYPE_LOOKUP:
-      return "lookup";
-   case TYPE_INDEX:
-      return "index";
-   case TYPE_BUILTIN:
-      return "builtin";
-   case TYPE_AST:
-      return "ast";
    default:
       return "unknown";
+   }
+}
+
+const char *getOperator(Operator op)
+{
+   switch (op)
+   {
+   case MULTIPLY:
+      return "*";
+   case DIVIDE:
+      return "/";
+   case PLUS:
+      return "+";
+   case MINUS:
+      return "-";
+   case MODULO:
+      return "%";
+   case FLOOR:
+      return "//";
+   case EXPONENT:
+      return "**";
+   case XOR:
+      return "^";
+   case BIT_OR:
+      return "|";
+   case BIT_AND:
+      return "&";
+   case LOGICAL_AND:
+      return "&&";
+   case LOGICAL_OR:
+      return "||";
+   case EQUAL:
+      return "==";
+   case NEQ:
+      return "!=";
+   case LEQ:
+      return "<=";
+   case GEQ:
+      return ">=";
+   case LST:
+      return "<";
+   case GRT:
+      return ">";
+   case NOT:
+      return "!";
+   case INTO:
+      return "=";
+   case RIGHT_SHIFT:
+      return ">>";
+   case LEFT_SHIFT:
+      return "<<";
+   case BIT_NOT:
+      return "~";
+   default:
+      return "<?>";
    }
 }
 
@@ -58,7 +106,7 @@ static char *listTostring(List *list)
    char *result = strdup("[");
    for (int i = 0; i < list->length; i++)
    {
-      char *itemStr = instanceToRepr(list->items[i]);
+      char *itemStr = dataanceToRepr(list->items[i]);
       result = realloc(result, strlen(result) + strlen(itemStr) + 4);
 
       strcat(result, itemStr);
@@ -85,9 +133,9 @@ static char *dictTostring(Dict *dict)
       while (pair)
       {
          char *keyStr =
-             instanceToRepr((Instance *)pair->key);
+             dataToRepr((Data *)pair->key);
          char *valStr =
-             instanceToRepr(pair->value);
+             dataanceToRepr(pair->value);
 
          result = realloc(result, strlen(result) + strlen(keyStr) + strlen(valStr) + 8);
          strcat(result, keyStr);
@@ -123,7 +171,7 @@ static char *setTostring(Set *set)
       if (set->bucket[i] == TOMBSTONE)
          continue;
 
-      char *s = instanceToRepr(set->bucket[i]);
+      char *s = dataanceToRepr(set->bucket[i]);
       strcat(buf, s);
       free(s);
 
@@ -190,55 +238,55 @@ static char *classToString(Class *cls)
    return result;
 }
 
-static char *instanceToRepr(Instance *inst)
+static char *dataToRepr(Data *data)
 {
-   if (!inst)
-      return strdup("<NULL instance>");
+   if (!data)
+      return strdup("<NULL dataance>");
 
    char buffer[64];
-   switch (inst->type)
+   switch (data->type)
    {
    case TYPE_INT:
-      snprintf(buffer, sizeof(buffer), "%d", *(int *)inst->integer);
+      snprintf(buffer, sizeof(buffer), "%d", *(int *)data->integer.atom);
       return strdup(buffer);
 
    case TYPE_STR:
    {
-      size_t len = strlen(inst->string);
+      size_t len = strlen(data->str.string);
       char *str = malloc(len + 3); // ' + text + ' + '\0'
       if (!str)
          return NULL;
 
       str[0] = '\'';
-      strcpy(str + 1, inst->string);
+      strcpy(str + 1, data->str.string);
       str[len + 1] = '\'';
       str[len + 2] = '\0';
       return str;
    }
 
    case TYPE_FLOAT:
-      snprintf(buffer, sizeof(buffer), "%g", *(double *)inst->decimal);
+      snprintf(buffer, sizeof(buffer), "%g", *(double *)data->decimal.real);
       return strdup(buffer);
 
    case TYPE_BOOL:
-      return strdup(*(int *)inst->integer ? "true" : "false");
+      return strdup(*(int *)data->integer.atom ? "true" : "false");
 
    case TYPE_LIST:
-      return listTostring(LIST_PTR(inst));
+      return listTostring(LIST_PTR(data));
    case TYPE_SET:
-      return setTostring(SET_PTR(inst));
+      return setTostring(SET_PTR(data));
 
    case TYPE_DICT:
-      return dictTostring(DICT_PTR(inst));
+      return dictTostring(DICT_PTR(data));
 
    case TYPE_FUNCTION:
-      return functionTostring(FUNCTION_PTR(inst));
+      return functionTostring(FUNCTION_PTR(data));
 
    case TYPE_RANGE:
-      return rangeTostring((Range *)inst->range);
+      return rangeTostring((Range *)data->range);
 
    case TYPE_CLASS:
-      return classToString(CLASS_PTR(inst));
+      return classToString(CLASS_PTR(data));
 
    case TYPE_NONE:
    default:
@@ -246,17 +294,17 @@ static char *instanceToRepr(Instance *inst)
    }
 }
 
-static char *instanceToString(Instance *inst)
+char *dataanceToString(Data *data)
 {
-   if (!inst)
+   if (!data)
       return strdup("null");
 
    // For strings, return without quotes (for direct printing)
-   if (inst->type == TYPE_STR)
-      return strdup(inst->string);
+   if (data->type == TYPE_STR)
+      return strdup(data->str.string);
 
    // For everything else, use repr-like formatting
-   return instanceToRepr(inst);
+   return dataanceToRepr(data);
 }
 
 static char *builtinToString(Data *builtin)
@@ -264,7 +312,7 @@ static char *builtinToString(Data *builtin)
    if (!builtin || builtin->type != TYPE_BUILTIN)
       return strdup("<built-in function>");
 
-   const BuiltinInfo *info = (const BuiltinInfo *)builtin->builtin;
+   const BuiltinInfo *info = (const BuiltinInfo *)builtin->any;
 
    if (!info || !info->name)
       return strdup("<built-in function>");
@@ -285,11 +333,119 @@ char *dataTostring(Data *d)
       return strdup("null");
 
    // For strings, return without quotes (for direct printing)
-   if (d->type == TYPE_INSTANCE)
-      return instanceToString(d->instance);
+   if (d->type == TYPE_STR)
+      return strdup(d->str.string);
 
-   if (d->type == TYPE_BUILTIN)
-      return builtinToString(d->builtin);
+   // For everything else, use repr-like formatting
+   return dataToRepr(d);
+}
 
-   return strdup("<TYPE NOT IMPLEMENTED>");
+int dataToBool(Data *data)
+{
+   if (!data)
+      return 0;
+
+   switch (data->type)
+   {
+   case TYPE_BOOL:
+      return *(int *)data->integer.atom;
+   case TYPE_INT:
+      return *(int *)data->integer.atom != 0;
+   case TYPE_FLOAT:
+      return *(double *)data->decimal.real != 0.0;
+   case TYPE_STR:
+      return data->str.string && strlen(data->str.string) > 0;
+   case TYPE_LIST:
+      if (LIST_PTR(data))
+         return LIST_PTR(data)->length > 0;
+      return 0;
+   case TYPE_SET:
+      if (SET_PTR(data))
+         return SET_PTR(data)->capacity > 0;
+      return 0;
+   case TYPE_DICT:
+      if (DICT_PTR(data))
+         return DICT_PTR(data)->size > 0;
+      return 0;
+   case TYPE_FUNCTION:
+      return 1; // Functions are always truthy
+   case TYPE_RANGE:
+      return 1; // Ranges are always truthy
+   default:
+      return 0;
+   }
+}
+
+static List *strToList(char *str)
+{
+   List *list = createList(strlen(str));
+   if (!list)
+      return NULL;
+
+   size_t len = strlen(str);
+
+   for (size_t i = 0; i < len; i++)
+   {
+      char *character = char_at(str, (int)i);
+      Data *ch = createData(TYPE_STR, character);
+      append(ch, list);
+   }
+
+   return list;
+}
+
+static List *setToList(Set *set)
+{
+   if (!set)
+      return NULL;
+
+   List *list = createList(set->capacity);
+
+   for (int i = 0; i < set->size; i++)
+   {
+      Data *d = (Data *)set->bucket[i];
+      if (d != TOMBSTONE && d != NULL)
+         append(cloneData(d), list);
+   }
+   return list;
+}
+
+static List *rangeToList(Range *r)
+{
+   List *list = list_create(abs((r->stop - r->start) / r->step) + 1);
+   int value = r->start;
+
+   while (value != r->stop)
+   {
+      Data *elem = createData(TYPE_INT, &value);
+      append(elem, list);
+      value += r->step;
+   }
+
+   return list;
+}
+
+List *resolveIterable(Data *iterable)
+{
+   if (!iterable)
+      return createList(RUNTIME_SIZE);
+
+   switch (iterable->type)
+   {
+   case TYPE_LIST:
+      return cloneList(LIST_PTR(iterable));
+   case TYPE_SET:
+      return setToList(SET_PTR(iterable));
+   case TYPE_RANGE:
+      return rangeToList(iterable->range);
+   case TYPE_STR:
+      return strToList(iterable->str.string);
+   default:
+      throw_error(
+          ERROR_TYPE,
+          "'%s' is not iterable",
+          etDataType(iterable->type));
+      break;
+   }
+   return NULL;
 }

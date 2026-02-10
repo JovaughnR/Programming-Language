@@ -1,7 +1,7 @@
 #ifndef CORE_TYPES_H
 #define CORE_TYPES_H
 
-#define TOMBSTONE (Instance *)1 // Define a special value for marking deleted slots in the hash table.
+#define TOMBSTONE (void *)1 // Define a special value for marking deleted slots in the hash table.
 
 #define PARSE_SIZE 10     // Initialize to a small amount for parsing
 #define RUNTIME_SIZE 1000 // Initialize to large amount for during runtime
@@ -10,17 +10,21 @@ typedef struct Dict Dict;
 typedef struct List List;
 typedef struct Set Set;
 
-#define IS_LIST(inst) ((inst) && (inst)->type == TYPE_LIST)
-#define IS_DICT(inst) ((inst) && (inst)->type == TYPE_DICT)
-#define IS_SET(inst) ((inst) && (inst)->type == TYPE_SET)
-#define IS_FUNCTION(inst) ((inst) && (inst)->type == TYPE_FUNCTION)
-#define IS_CLASS(inst) ((inst) && (inst)->type == TYPE_CLASS)
+#define CONSTRUCTOR_NAME "__init__"
 
-#define LIST_PTR(inst) (IS_LIST(inst) ? (List *)(inst)->ref->object : NULL)
-#define DICT_PTR(inst) (IS_DICT(inst) ? (Dict *)(inst)->ref->object : NULL)
-#define SET_PTR(inst) (IS_SET(inst) ? (Set *)(inst)->ref->object : NULL)
+#define IS_LIST(d) ((d) && (d)->type == TYPE_LIST)
+#define IS_DICT(d) ((d) && (d)->type == TYPE_DICT)
+#define IS_SET(d) ((d) && (d)->type == TYPE_SET)
+#define IS_FUNCTION(d) ((d) && (d)->type == TYPE_FUNCTION)
+#define IS_CLASS(d) ((d) && (d)->type == TYPE_CLASS)
+#define IS_INSTANCE(d) ((d) && (d)->type == TYPE_INSTANCE)
+
+#define LIST_PTR(d) (IS_LIST(d) ? (List *)(d)->ref->object : NULL)
+#define DICT_PTR(d) (IS_DICT(d) ? (Dict *)(d)->ref->object : NULL)
+#define SET_PTR(d) (IS_SET(d) ? (Set *)(d)->ref->object : NULL)
 #define FUNCTION_PTR(d) (IS_FUNCTION(d) ? (Function *)(d)->ref->object : NULL)
-#define CLASS_PTR(inst) (IS_CLASS(inst) ? (Class *)(inst)->ref->object : NULL)
+#define CLASS_PTR(d) (IS_CLASS(d) ? (Class *)(d)->ref->object : NULL)
+#define INSTANCE_PTR(d) (IS_INSTANCE(d) ? (Instance *)(d)->obj->object : NULL)
 
 typedef enum
 {
@@ -29,24 +33,24 @@ typedef enum
    TYPE_BOOL,
    TYPE_STR,
    TYPE_FUNCTION,
+   TYPE_INSTANCE,
    TYPE_LIST,
    TYPE_DICT,
    TYPE_RANGE,
    TYPE_SET,
    TYPE_CLASS,
    TYPE_NONE,
-} DataType;
-
-typedef enum
-{
    TYPE_INSTANCE,
+
+   // Helper Types
    TYPE_INVOKED,
    TYPE_OPERATOR,
    TYPE_LOOKUP,
    TYPE_ATTRIBUTE,
    TYPE_INDEX,
    TYPE_BUILTIN,
-} HelperType;
+   TYPE_VAR
+} DataType;
 
 typedef enum
 {
@@ -60,6 +64,7 @@ typedef enum
    XOR,
    BIT_OR,
    BIT_AND,
+   BIT_NOT,
    LOGICAL_AND,
    LOGICAL_OR,
    EQUAL,
@@ -83,77 +88,75 @@ typedef enum
  */
 typedef struct Data
 {
-   HelperType type;
+   DataType type;
    union
    {
-      struct Operator *op;
-      struct Invoked *invoked;
-      struct Instance *instance;
-      struct Indexed *index;
-      struct Attribute *attribute;
-      void *builtin;
-      struct Data *var;
+      struct Int integer;
+      struct Float decimal;
+      struct Str str;
+      struct Range *range;
+      struct Object *ref;
+      struct None none;
       void *any;
    };
 } Data;
 
-typedef struct Instance
+typedef struct Int
 {
-   DataType type;
-   union
-   {
-      int *integer;
-      double *decimal;
-      char *string;
-      struct Reference *ref; // referene types (class, list, dict, set, function, class)
-      struct Range *range;
-      struct Instance *inst;
-      void *none;
-   };
-   struct Dict *attributes;
-} Instance;
+   int *atom;
+   struct Dict *methods;
+} Int;
 
-typedef struct Set
+typedef struct Float
 {
-   int size;
-   int capacity;
-   Instance **bucket;
-} Set;
+   double *real;
+   struct Dict *methods;
+} Float;
 
-typedef struct Reference
+typedef struct Str
+{
+   char *string;
+   struct Dict *methods;
+} Str;
+
+typedef struct None
+{
+   void *null;
+   struct Dict *methods;
+} None;
+
+typedef struct Object
 {
    void *object;   // Pointer to the actual object (List*, Dict*, Set*, Function*)
    int references; // Number of references
    int isEvaluated;
-} Reference;
+
+   struct Dict *methods;
+} Object;
 
 typedef struct Range
 {
-   int start;
-   int stop;
-   int step;
+   int start, stop, step;
+   struct Dict *methods;
 } Range;
-
-typedef struct Class
-{
-   char *name;              // Class name
-   struct Runtime *rt;      // Class environment (contains methods and attributes)
-   struct List *parents;    // List of parent classes
-   struct List *statements; // List of methods
-   struct List *mro;
-   int isInitialize;
-} Class;
 
 typedef struct Indexed
 {
-   Data *variable;
-   struct ASTNode *value;
+   Data *var;
+   struct ASTnode *val;
 } Indexed;
+
+typedef struct Invoked
+{
+   struct ASTnode *postfix;
+   struct List *args;
+   struct List *kwargs;
+} Invoked;
 
 typedef struct Attribute
 {
-   struct ASTNode *object;    // The object (left side of the dot)
-   struct ASTNode *attribute; // The attribute name (right side of the dot)
+   struct ASTnode *object; // The object (left side of the dot)
+   struct Data *attrib;    // The attribute name (right side of the dot)
 } Attribute;
 
 typedef struct ASTnode
@@ -168,63 +171,9 @@ typedef struct Function
    char *name;
    struct List *params;
    struct List *body;
-   struct Env *env;
+   struct Environment *env;
    struct Dict *locals;
 } Function;
-
-typedef enum
-{
-   BUILTIN_PRINT,
-   BUILTIN_INPUT,
-   BUILTIN_TYPE,
-   BUILTIN_INT,
-   BUILTIN_FLOAT,
-   BUILTIN_STR,
-   BUILTIN_BOOL,
-   BUILTIN_LEN,
-
-   BUILTIN_REMOVE,
-   BUILTIN_KEYS,
-   BUILTIN_VALUES,
-   BUILTIN_ABS,
-   BUILTIN_MIN,
-   BUILTIN_MAX,
-   BUILTIN_DICT,
-   BUILTIN_SET,
-   BUILTIN_LIST,
-   BUILTIN_RANGE,
-   BUILTIN_SUM,
-   BUILTIN_POW,
-   BUILTIN_ROUND,
-   BUILTIN_UPPER,
-   BUILTIN_LOWER,
-   BUILTIN_SPLIT,
-   BUILTIN_JOIN,
-   BUILTIN_SORTED,
-   BUILTIN_REVERSED,
-   BUILTIN_CLEAR,
-   BUILTIN_EXTEND,
-
-   // LIST METHOD TYPES (MODIFIES LIST IN PLACE)
-   LIST_REVERSE,
-   LIST_EXTEND,
-   LIST_SLICE,
-   LIST_INDEX,
-   LIST_CLEAR,
-   LIST_GET,
-   LIST_REMOVE,
-   LIST_POP,
-   LIST_INSERT
-
-} BuiltinType;
-
-typedef struct
-{
-   BuiltinType type;
-   const char *name;
-   int min_args;
-   int max_args; // -1 for variadic
-} BuiltinInfo;
 
 typedef struct Environment
 {
@@ -236,26 +185,139 @@ typedef struct Environment
    Dict *builtins;
 } Environment;
 
-typedef struct
+typedef struct Method
+{
+   struct Dict *builtin; // GLOBAL BUILTIN METHODS
+   struct Dict *list;    // LIST ATTRIBUTES
+   struct Dict *set;     // SET ATTRIBUTES
+   struct Dict *dict;    // DICT ATTRIBUTES
+   struct Dict *atom;    // INT ATTRIBUTES
+   struct Dict *real;    // FLOAT ATTRIBUTES
+   struct Dict *str;     // STRING ATTRIBUTES
+   struct Range *range;
+   struct None *none;
+} Method;
+
+typedef struct Runtime
 {
    void *modules; // List of imported module environments
-   struct Env *env;
-   struct Dict *builtins;   // GLOBAL BUILTIN METHODS
-   struct Dict *list_dir;   // LIST ATTRIBUTES
-   struct Dict *set_dir;    // SET ATTRIBUTES
-   struct Dict *dict_dir;   // DICT ATTRIBUTES
-   struct Dict *int_dir;    // INT ATTRIBUTES
-   struct Dict *float_dir;  // FLOAT ATTRIBUTES
-   struct Dict *str_dir;    // STRING ATTRIBUTES
+   struct Environment *env;
+   struct Method *methods;
+
    struct Arena *tempArena; // NEW: Temporary allocations
    struct Arena *exprArena; // NEW: Expression evaluation
    int arenaDepth;          // NEW: Track nested scopes
 } Runtime;
 
+typedef struct Class
+{
+   char *name;              // Class name
+   struct List *parents;    // List of parent classes
+   struct List *statements; // List of methods
+   struct List *mro;
+   struct Environment *env;
+   int isInitialize;
+} Class;
+
+typedef struct Instance
+{
+   Class *class; // Pointer to custom Class
+   Dict *attributes;
+} Instance;
+
+typedef enum
+{
+   FLOW_NORMAL,   // Continue normal execution
+   FLOW_RETURN,   // Return from function
+   FLOW_BREAK,    // Break from loop
+   FLOW_CONTINUE, // Continue to next iteration
+   FLOW_TAKEN
+} Status;
+
+typedef struct Flow
+{
+   struct ASTnode *condition;
+   struct List *body;
+
+   struct Flow *elif_chain;
+   struct Flow *else_block;
+} Flow;
+
+typedef struct WhileLoop
+{
+   struct ASTnode *condition;
+   List *body;
+} WhileLoop;
+
+typedef struct ForLoop
+{
+   char *iterator;
+   struct ASTnode *iterable;
+   struct List *body;
+} ForLoop;
+
+typedef struct ParamInfo
+{
+   char *name;
+   struct ASTnode *defaultValue;
+   int hasDefault;
+} ParamInfo;
+
+typedef struct Import
+{
+   char *module;       // Module name (e.g., "math" or "os.path")
+   char *alias;        // Alias name (for "import X as Y")
+   struct List *items; // Specific items to import (NULL for "import module")
+   int importAll;      // 1 for "from X import *", 0 otherwise
+} Import;
+
+typedef enum
+{
+   STMT_ASSIGNMENT,
+   STMT_COMP_ASSIGN,
+   STMT_FLOW,
+   STMT_WHILE,
+   STMT_FOR,
+   STMT_RETURN,
+   STMT_BREAK,
+   STMT_CONTINUE,
+   STMT_FUNCTION,
+   STMT_EXPRESSION,
+   STMT_CLASS,
+   STMT_GLOBAL,
+   STMT_NONLOCAL,
+   STMT_IMPORT
+} StatementType;
+
+typedef struct Statement
+{
+   StatementType type;
+   void *data;
+   int lineno;
+} Statement;
+
+typedef enum
+{
+   DECL_GLOBAL,
+   DECL_NONLOCAL
+} DeclType;
+
+typedef struct
+{
+   DeclType type;
+   Data *name; // Variable name
+} VarDecl;
+
+typedef struct
+{
+   struct List *vars;   // (x, x[2] x.size)
+   struct List *values; // List of values to assign
+   void *value;         // Right-hand side expression (can be a list of values)
+   ASTnode *op;         // Operator for compound assignments (NULL if simple)
+} Assignment;
+
 typedef Data *(*ExecFn)(ASTnode *, Runtime *);
 // typedef Status (*ExecBody)(List *, void **, Runtime *);
-
-const char *getDataType(DataType type);
-char *dataTostring(Data *d);
+typedef int (*Compare)(const void *, const void *);
 
 #endif // CORES_TYPE_H
