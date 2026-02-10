@@ -59,7 +59,7 @@ STRING_SQ   \'([^'\\]|\\.)*\'
    /* Empty lines - keep them simple */
 ^[ \t]*\n {
    at_line_start = 1;
-   return NEWLINE;
+   return NL;
 }
 
    /* Indented line - match indent + first char of content */
@@ -140,7 +140,7 @@ STRING_SQ   \'([^'\\]|\\.)*\'
 \n {
    at_line_start = 1;
    column = 0;
-   return NEWLINE;
+   return NL;
 }
 
    /* Keywords - elif and else need special handling for dedents */
@@ -195,9 +195,9 @@ STRING_SQ   \'([^'\\]|\\.)*\'
 "while"      { at_line_start = 0; return WHILE; }
 "for"        { at_line_start = 0; return FOR; }
 "in"         { at_line_start = 0; return IN; }
-"None"       { at_line_start = 0; return NONE; }
 "global"     { at_line_start = 0; return GLOBAL; }
 "nonlocal"   { at_line_start = 0; return NONLOCAL; }
+
 
    /* Delimiters */
 "("   { return '('; }
@@ -210,6 +210,9 @@ STRING_SQ   \'([^'\\]|\\.)*\'
 ","   { return ','; }
 "."   { return '.'; }
 "="   { return '='; }
+
+"None" { return NONE; }
+
 
    /* Boolean literals */
 "true" {
@@ -254,6 +257,7 @@ STRING_SQ   \'([^'\\]|\\.)*\'
 "&"   { yylval.generic = createASToperator(BIT_AND);     return BITAND; }
 "|"   { yylval.generic = createASToperator(BIT_OR);      return BITOR; }
 "^"   { yylval.generic = createASToperator(XOR);         return BITXOR; }
+"~"   { yylval.generic = createASToperator(BIT_NOT);     return BITNOT; }
 
    /* Arithmetic operators */
 "+"   { yylval.generic = createASToperator(PLUS);      return ADD; }
@@ -302,6 +306,7 @@ STRING_SQ   \'([^'\\]|\\.)*\'
    strncpy(content, yytext + 1, len);
    content[len] = '\0';
    yylval.generic = createASTnode(createData(TYPE_STR, content));
+   free(content);
    return STRING;
 }
 
@@ -328,7 +333,7 @@ STRING_SQ   \'([^'\\]|\\.)*\'
    }
    
    at_line_start = 0;
-   yylval.generic = createData(TYPE_STR, strdup(yytext));
+   yylval.generic = strdup(yytext);
    return VARIABLE;
 }
 
@@ -343,7 +348,7 @@ STRING_SQ   \'([^'\\]|\\.)*\'
    /* If we're not at the start of a line, emit a NEWLINE first */
    if (!at_line_start) {
       at_line_start = 1;
-      return NEWLINE;
+      return NL;
    }
    
    if (pending_dedents > 0) {
