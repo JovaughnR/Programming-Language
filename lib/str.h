@@ -3,15 +3,15 @@
 
 #include "type.h"
 #include <string.h>
-char *str_concat(char *s1, char *s2);
+char *str_concat(const char *s1, const char *s2);
 
-char *str_replicate(char *str, int times);
+char *str_replicate(const char *str, int times);
 
 int str_is_substr(const char *subStr, const char *str);
 
 int str_lexicographical_compare(const char *str1, const char *str2);
 
-char *str_slice(const char *str, int start, int end);
+char *str_slice(const char *str, int start, int end, int step);
 
 char *str_char_at(const char *s, int index);
 

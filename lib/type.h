@@ -3,14 +3,10 @@
 
 #define TOMBSTONE (void *)1 // Define a special value for marking deleted slots in the hash table.
 
-#define PARSE_SIZE 10     // Initialize to a small amount for parsing
-#define RUNTIME_SIZE 1000 // Initialize to large amount for during runtime
+#define __len__ 8 // Initialize to a small amount for parsing
+#define __size__ 8
 
-typedef struct Dict Dict;
-typedef struct List List;
-typedef struct Set Set;
-
-#define CONSTRUCTOR_NAME "__init__"
+#define CONSTRUCTOR_NAME "__struct__"
 
 #define IS_LIST(d) ((d) && (d)->type == TYPE_LIST)
 #define IS_DICT(d) ((d) && (d)->type == TYPE_DICT)
@@ -40,7 +36,6 @@ typedef enum
    TYPE_SET,
    TYPE_CLASS,
    TYPE_NONE,
-   TYPE_INSTANCE,
 
    // Helper Types
    TYPE_INVOKED,
@@ -49,7 +44,9 @@ typedef enum
    TYPE_ATTRIBUTE,
    TYPE_INDEX,
    TYPE_BUILTIN,
-   TYPE_VAR
+   TYPE_VAR,
+   TYPE_SLICE,
+   TYPE_RUNTIME
 } DataType;
 
 typedef enum
@@ -91,47 +88,21 @@ typedef struct Data
    DataType type;
    union
    {
-      struct Int integer;
-      struct Float decimal;
-      struct Str str;
+      int *atom;
+      double *real;
+      char *str;
+      void *any;
+
       struct Range *range;
       struct Object *ref;
-      struct None none;
-      void *any;
    };
 } Data;
-
-typedef struct Int
-{
-   int *atom;
-   struct Dict *methods;
-} Int;
-
-typedef struct Float
-{
-   double *real;
-   struct Dict *methods;
-} Float;
-
-typedef struct Str
-{
-   char *string;
-   struct Dict *methods;
-} Str;
-
-typedef struct None
-{
-   void *null;
-   struct Dict *methods;
-} None;
 
 typedef struct Object
 {
    void *object;   // Pointer to the actual object (List*, Dict*, Set*, Function*)
    int references; // Number of references
    int isEvaluated;
-
-   struct Dict *methods;
 } Object;
 
 typedef struct Range
@@ -142,8 +113,8 @@ typedef struct Range
 
 typedef struct Indexed
 {
-   Data *var;
-   struct ASTnode *val;
+   struct ASTnode *object;
+   struct ASTnode *value;
 } Indexed;
 
 typedef struct Invoked
@@ -159,6 +130,19 @@ typedef struct Attribute
    struct Data *attrib;    // The attribute name (right side of the dot)
 } Attribute;
 
+typedef struct Instance
+{
+   struct Class *class;
+   struct Dict *attributes;
+} Instance;
+
+typedef struct Slice
+{
+   struct ASTnode *start;
+   struct ASTnode *stop;
+   struct ASTnode *step;
+} Slice;
+
 typedef struct ASTnode
 {
    Data *data;
@@ -168,7 +152,7 @@ typedef struct ASTnode
 
 typedef struct Function
 {
-   char *name;
+   Data *name;
    struct List *params;
    struct List *body;
    struct Environment *env;
@@ -177,12 +161,12 @@ typedef struct Function
 
 typedef struct Environment
 {
-   Dict *vars;
-   struct Env *parent;
+   struct Dict *vars;
+   struct Environment *parent;
    int ref;
-   Dict *global_vars;
-   Dict *nonlocal_vars;
-   Dict *builtins;
+   struct Dict *global_vars;
+   struct Dict *nonlocal_vars;
+   struct Dict *builtins;
 } Environment;
 
 typedef struct Method
@@ -194,8 +178,8 @@ typedef struct Method
    struct Dict *atom;    // INT ATTRIBUTES
    struct Dict *real;    // FLOAT ATTRIBUTES
    struct Dict *str;     // STRING ATTRIBUTES
-   struct Range *range;
-   struct None *none;
+   struct Dict *range;
+   struct Dict *none;
 } Method;
 
 typedef struct Runtime
@@ -211,19 +195,13 @@ typedef struct Runtime
 
 typedef struct Class
 {
-   char *name;              // Class name
+   Data *name;              // Class name
    struct List *parents;    // List of parent classes
    struct List *statements; // List of methods
    struct List *mro;
-   struct Environment *env;
+   Runtime *rt;
    int isInitialize;
 } Class;
-
-typedef struct Instance
-{
-   Class *class; // Pointer to custom Class
-   Dict *attributes;
-} Instance;
 
 typedef enum
 {
@@ -246,27 +224,27 @@ typedef struct Flow
 typedef struct WhileLoop
 {
    struct ASTnode *condition;
-   List *body;
+   struct List *body;
 } WhileLoop;
 
 typedef struct ForLoop
 {
-   char *iterator;
+   Data *iterator;
    struct ASTnode *iterable;
    struct List *body;
 } ForLoop;
 
 typedef struct ParamInfo
 {
-   char *name;
+   Data *name;
    struct ASTnode *defaultValue;
    int hasDefault;
 } ParamInfo;
 
 typedef struct Import
 {
-   char *module;       // Module name (e.g., "math" or "os.path")
-   char *alias;        // Alias name (for "import X as Y")
+   Data *module;       // Module name (e.g., "math" or "os.path")
+   Data *alias;        // Alias name (for "import X as Y")
    struct List *items; // Specific items to import (NULL for "import module")
    int importAll;      // 1 for "from X import *", 0 otherwise
 } Import;
@@ -286,7 +264,8 @@ typedef enum
    STMT_CLASS,
    STMT_GLOBAL,
    STMT_NONLOCAL,
-   STMT_IMPORT
+   STMT_IMPORT,
+   STMT_EXCEPTION
 } StatementType;
 
 typedef struct Statement
@@ -296,18 +275,6 @@ typedef struct Statement
    int lineno;
 } Statement;
 
-typedef enum
-{
-   DECL_GLOBAL,
-   DECL_NONLOCAL
-} DeclType;
-
-typedef struct
-{
-   DeclType type;
-   Data *name; // Variable name
-} VarDecl;
-
 typedef struct
 {
    struct List *vars;   // (x, x[2] x.size)
@@ -315,9 +282,5 @@ typedef struct
    void *value;         // Right-hand side expression (can be a list of values)
    ASTnode *op;         // Operator for compound assignments (NULL if simple)
 } Assignment;
-
-typedef Data *(*ExecFn)(ASTnode *, Runtime *);
-// typedef Status (*ExecBody)(List *, void **, Runtime *);
-typedef int (*Compare)(const void *, const void *);
 
 #endif // CORES_TYPE_H

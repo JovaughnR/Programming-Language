@@ -2,9 +2,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
-#include "type.h"
+#include <limits.h>
 
-char *str_concat(char *s1, char *s2)
+char *str_concat(const char *s1, const char *s2)
 {
    if (!s1 || !s2)
       return NULL;
@@ -22,7 +22,7 @@ char *str_concat(char *s1, char *s2)
    return result;
 }
 
-char *str_replicate(char *str, int times)
+char *str_replicate(const char *str, int times)
 {
    if (times <= 0)
       return strdup("");
@@ -60,46 +60,87 @@ int str_lexicographical_compare(const char *str1, const char *str2)
    return (unsigned char)str1[i] - (unsigned char)str2[i];
 }
 
-char *str_slice(const char *str, int start, int end)
-{
-   int len = strlen(str);
-
-   // Handle negative indices (Python-style)
-   if (start < 0)
-      start = len + start;
-   if (end < 0)
-      end = len + end;
-
-   // Clamp to valid ranges
-   if (start < 0)
-      start = 0;
-   if (end > len)
-      end = len;
-   if (start >= end)
-   {
-      char *empty = malloc(1);
-      empty[0] = '\0';
-      return empty;
-   }
-
-   int newLen = end - start;
-   char *result = malloc(newLen + 1);
-
-   memcpy(result, str + start, newLen);
-   result[newLen] = '\0';
-
-   return result;
-}
-
 char *str_char_at(const char *s, int index)
 {
-   size_t len = strlen(s);
-
    char str[2];
    str[0] = s[index];
    str[1] = '\0';
 
-   return str;
+   return strdup(str);
+}
+
+char *str_slice(const char *str, int start, int end, int step)
+{
+   int len = strlen(str);
+
+   if (step == 0)
+      return NULL;
+
+   // Resolve sentinels
+   if (step > 0)
+   {
+      if (start == INT_MIN)
+         start = 0;
+      if (end == INT_MAX)
+         end = len;
+   }
+   else
+   {
+      if (start == INT_MAX)
+         start = len - 1;
+      if (end == INT_MIN)
+         end = -1; // one before index 0
+   }
+
+   // Normalize negative indices — but never touch the -1 sentinel for negative steps
+   if (start < 0 && !(step < 0 && start == -1))
+      start += len;
+   if (end < 0 && !(step < 0 && end == -1))
+      end += len;
+
+   // Clamp
+   if (step > 0)
+   {
+      start = start < 0 ? 0 : (start > len ? len : start);
+      end = end < 0 ? 0 : (end > len ? len : end);
+   }
+   else
+   {
+      start = start >= len ? len - 1 : (start < 0 ? 0 : start);
+      end = end >= len ? len - 1 : (end < -1 ? -1 : end);
+   }
+
+   // Count iterations
+   int newLen = 0;
+
+   if (step > 0)
+   {
+      if (start < end)
+         newLen = 1 + (end - 1 - start) / step;
+   }
+   else
+   {
+      if (start > end)
+         newLen = 1 + (start - 1 - end) / (-step);
+   }
+
+   if (newLen < 0)
+      newLen = 0;
+
+   char *result = malloc(newLen + 1);
+   if (!result)
+      return NULL;
+
+   int j = 0;
+   if (step > 0)
+      for (int i = start; i < end; i += step)
+         result[j++] = str[i];
+   else
+      for (int i = start; i > end; i += step)
+         result[j++] = str[i];
+
+   result[j] = '\0';
+   return result;
 }
 
 char *str_to_uppercase(const char *str)
@@ -553,3 +594,11 @@ char *str_pad_right(const char *str, size_t total_length, char pad_char)
 
    return result;
 }
+
+// int main(void)
+// {
+//    const char *str = "HelloWorld";
+//    printf("Result: %s\n", str_slice(str, INT_MAX, INT_MIN, -4));
+
+//    return 0;
+// }

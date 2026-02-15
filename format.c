@@ -3,14 +3,17 @@
 #include "./lib/list.h"
 #include "./lib/dict.h"
 #include "./lib/type.h"
-#include "./lib/built.h"
+#include "./lib/build.h"
 #include "./lib/set.h"
 #include "./lib/utils.h"
 #include "./lib/format.h"
 #include "./lib/error.h"
+#include "./lib/str.h"
+#include "./lib/maloc.h"
 
 // Function Prototypes
 static char *dataToRepr(Data *data);
+static char *builtinToString(Data *builtin);
 
 const char *getDataType(DataType type)
 {
@@ -106,7 +109,7 @@ static char *listTostring(List *list)
    char *result = strdup("[");
    for (int i = 0; i < list->length; i++)
    {
-      char *itemStr = dataanceToRepr(list->items[i]);
+      char *itemStr = dataToRepr(list->items[i]);
       result = realloc(result, strlen(result) + strlen(itemStr) + 4);
 
       strcat(result, itemStr);
@@ -132,10 +135,8 @@ static char *dictTostring(Dict *dict)
       Pair *pair = dict->buckets[i];
       while (pair)
       {
-         char *keyStr =
-             dataToRepr((Data *)pair->key);
-         char *valStr =
-             dataanceToRepr(pair->value);
+         char *keyStr = dataToRepr((Data *)pair->key);
+         char *valStr = dataToRepr(pair->value);
 
          result = realloc(result, strlen(result) + strlen(keyStr) + strlen(valStr) + 8);
          strcat(result, keyStr);
@@ -171,7 +172,7 @@ static char *setTostring(Set *set)
       if (set->bucket[i] == TOMBSTONE)
          continue;
 
-      char *s = dataanceToRepr(set->bucket[i]);
+      char *s = dataToRepr(set->bucket[i]);
       strcat(buf, s);
       free(s);
 
@@ -213,7 +214,7 @@ static char *functionTostring(Function *func)
    char buffer[256];
    if (func->name)
       snprintf(buffer, sizeof(buffer),
-               "<function %s at %p>", func->name, (void *)func);
+               "<function %s at %p>", func->name->str, (void *)func);
    else
       snprintf(buffer, sizeof(buffer), "<lambda at %p>", (void *)func);
 
@@ -229,12 +230,12 @@ static char *classToString(Class *cls)
       return strdup("<class '?'>");
 
    // Format: <class 'ClassName'>
-   size_t len = strlen(cls->name) + 20;
+   size_t len = strlen(cls->name->str) + 20;
    char *result = malloc(len);
    if (!result)
       return strdup("<class>");
 
-   snprintf(result, len, "<class '%s'>", cls->name);
+   snprintf(result, len, "<class '%s'>", cls->name->str);
    return result;
 }
 
@@ -247,29 +248,29 @@ static char *dataToRepr(Data *data)
    switch (data->type)
    {
    case TYPE_INT:
-      snprintf(buffer, sizeof(buffer), "%d", *(int *)data->integer.atom);
+      snprintf(buffer, sizeof(buffer), "%d", *(int *)data->atom);
       return strdup(buffer);
 
    case TYPE_STR:
    {
-      size_t len = strlen(data->str.string);
+      size_t len = strlen(data->str);
       char *str = malloc(len + 3); // ' + text + ' + '\0'
       if (!str)
          return NULL;
 
       str[0] = '\'';
-      strcpy(str + 1, data->str.string);
+      strcpy(str + 1, data->str);
       str[len + 1] = '\'';
       str[len + 2] = '\0';
       return str;
    }
 
    case TYPE_FLOAT:
-      snprintf(buffer, sizeof(buffer), "%g", *(double *)data->decimal.real);
+      snprintf(buffer, sizeof(buffer), "%g", *(double *)data->real);
       return strdup(buffer);
 
    case TYPE_BOOL:
-      return strdup(*(int *)data->integer.atom ? "true" : "false");
+      return strdup(*(int *)data->atom ? "true" : "false");
 
    case TYPE_LIST:
       return listTostring(LIST_PTR(data));
@@ -288,23 +289,26 @@ static char *dataToRepr(Data *data)
    case TYPE_CLASS:
       return classToString(CLASS_PTR(data));
 
+   case TYPE_BUILTIN:
+      return builtinToString(data->any);
+
    case TYPE_NONE:
    default:
       return strdup("none");
    }
 }
 
-char *dataanceToString(Data *data)
+char *dataToString(Data *data)
 {
    if (!data)
       return strdup("null");
 
    // For strings, return without quotes (for direct printing)
    if (data->type == TYPE_STR)
-      return strdup(data->str.string);
+      return strdup(data->str);
 
    // For everything else, use repr-like formatting
-   return dataanceToRepr(data);
+   return dataToRepr(data);
 }
 
 static char *builtinToString(Data *builtin)
@@ -334,7 +338,7 @@ char *dataTostring(Data *d)
 
    // For strings, return without quotes (for direct printing)
    if (d->type == TYPE_STR)
-      return strdup(d->str.string);
+      return strdup(d->str);
 
    // For everything else, use repr-like formatting
    return dataToRepr(d);
@@ -348,13 +352,13 @@ int dataToBool(Data *data)
    switch (data->type)
    {
    case TYPE_BOOL:
-      return *(int *)data->integer.atom;
+      return *(int *)data->atom;
    case TYPE_INT:
-      return *(int *)data->integer.atom != 0;
+      return *(int *)data->atom != 0;
    case TYPE_FLOAT:
-      return *(double *)data->decimal.real != 0.0;
+      return *(double *)data->real != 0.0;
    case TYPE_STR:
-      return data->str.string && strlen(data->str.string) > 0;
+      return data->str && strlen(data->str) > 0;
    case TYPE_LIST:
       if (LIST_PTR(data))
          return LIST_PTR(data)->length > 0;
@@ -378,7 +382,7 @@ int dataToBool(Data *data)
 
 static List *strToList(char *str)
 {
-   List *list = createList(strlen(str));
+   List *list = list_create(strlen(str));
    if (!list)
       return NULL;
 
@@ -386,9 +390,9 @@ static List *strToList(char *str)
 
    for (size_t i = 0; i < len; i++)
    {
-      char *character = char_at(str, (int)i);
+      char *character = str_char_at(str, (int)i);
       Data *ch = createData(TYPE_STR, character);
-      append(ch, list);
+      list_append(ch, list);
    }
 
    return list;
@@ -399,13 +403,13 @@ static List *setToList(Set *set)
    if (!set)
       return NULL;
 
-   List *list = createList(set->capacity);
+   List *list = list_create(set->capacity);
 
    for (int i = 0; i < set->size; i++)
    {
       Data *d = (Data *)set->bucket[i];
       if (d != TOMBSTONE && d != NULL)
-         append(cloneData(d), list);
+         list_append(cloneData(d), list);
    }
    return list;
 }
@@ -418,7 +422,7 @@ static List *rangeToList(Range *r)
    while (value != r->stop)
    {
       Data *elem = createData(TYPE_INT, &value);
-      append(elem, list);
+      list_append(elem, list);
       value += r->step;
    }
 
@@ -428,23 +432,23 @@ static List *rangeToList(Range *r)
 List *resolveIterable(Data *iterable)
 {
    if (!iterable)
-      return createList(RUNTIME_SIZE);
+      return list_create(__size__);
 
    switch (iterable->type)
    {
    case TYPE_LIST:
-      return cloneList(LIST_PTR(iterable));
+      return list_clone(LIST_PTR(iterable));
    case TYPE_SET:
       return setToList(SET_PTR(iterable));
    case TYPE_RANGE:
       return rangeToList(iterable->range);
    case TYPE_STR:
-      return strToList(iterable->str.string);
+      return strToList(iterable->str);
    default:
       throw_error(
           ERROR_TYPE,
           "'%s' is not iterable",
-          etDataType(iterable->type));
+          getDataType(iterable->type));
       break;
    }
    return NULL;

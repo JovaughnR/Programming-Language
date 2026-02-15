@@ -1,8 +1,6 @@
 #ifndef DICT_H
 #define DICT_H
 
-typedef void *(*Clone)(const void *);
-
 typedef struct Pair
 {
    void *key; // can be int, float, string
@@ -19,8 +17,15 @@ typedef struct Dict
 
 // Function Prototypes
 
-Dict *createDict(int size);
-Pair *createPair(void *key, void *value);
+Dict *dict_create(int size);
+Pair *pair_create(void *key, void *value);
+
+// These functions should be implemented by whosover includes the module
+extern unsigned long hash(void *key);
+extern int datacmp(const void *d1, const void *d2);
+extern void *cloneData(const void *d);
+extern void data_free(const void *data);
+extern void pair_free(const void *pair);
 
 /**
  * Inserts a new key-value pair into the hash dict.
@@ -38,7 +43,7 @@ int dict_insert(void *key, void *value, Dict *dict);
  * @param dict The dict to search
  * @return The value associated with the key, or NULL if the key is not found
  */
-void *dict_get(void *key, Dict *dict, Compare cmp);
+void *dict_get(void *key, Dict *dict);
 /**
  * Removes a key-value pair from the dict.
  * If the key is found, it is removed from the bucket (linked list).
@@ -48,16 +53,17 @@ void *dict_get(void *key, Dict *dict, Compare cmp);
  */
 
 void dict_erase(void *key, Dict *dict);
-int dict_has(void *key, Dict *dict, Compare cmp);
+int dict_has(void *key, Dict *dict);
 void dict_clear(Dict *dict);
 int dict_len(Dict *dict);
-void *dict_keys(Dict *dict);
-void *dict_values(Dict *dict);
-void *dict_items(Dict *dict);
-void *dict_pop(void *key, Dict *dict, Compare cmp);
+void dict_keys(Dict *dict, void **items);
+void dict_values(Dict *dict, void **items);
+void dict_items(Dict *dict, void **items);
+void *dict_pop(void *key, Dict *dict);
 void dict_update(Dict *dest, Dict *src);
-int dicts_equal(Dict *a, Dict *b, Compare cmp);
-Dict *dict_clone(Dict *original, Clone clone);
+int dict_equal(Dict *a, Dict *b);
+Dict *dict_clone(Dict *original);
 int dict_setdefault(void *key, void *def_val, Dict *dict);
-void dict_free(Dict *dict, void (*freePair)(void *));
+void dict_free(Dict *dict);
+
 #endif

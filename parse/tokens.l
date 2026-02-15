@@ -229,58 +229,58 @@ STRING_SQ   \'([^'\\]|\\.)*\'
 
    /* Logical operators */
 "and" {
-   yylval.generic = createASToperator(LOGICAL_AND);
+   yylval.generic = createASTop(LOGICAL_AND);
    return LOGIC_AND;
 }
 
 "or" {
-   yylval.generic = createASToperator(LOGICAL_OR);
+   yylval.generic = createASTop(LOGICAL_OR);
    return LOGIC_OR;
 }
 
 "not" {
-   yylval.generic = createASToperator(NOT);
+   yylval.generic = createASTop(NOT);
    return INVERT;
 }
 
    /* Comparison operators */
-"==" { yylval.generic = createASToperator(EQUAL); return EQ; }
-"!=" { yylval.generic = createASToperator(NEQ);   return NE; }
-"<=" { yylval.generic = createASToperator(LEQ);   return LE; }
-">=" { yylval.generic = createASToperator(GEQ);   return GE; }
-"<"  { yylval.generic = createASToperator(LST);   return LT; }
-">"  { yylval.generic = createASToperator(GRT);   return GT; }
+"==" { yylval.generic = createASTop(EQUAL); return EQ; }
+"!=" { yylval.generic = createASTop(NEQ);   return NE; }
+"<=" { yylval.generic = createASTop(LEQ);   return LE; }
+">=" { yylval.generic = createASTop(GEQ);   return GE; }
+"<"  { yylval.generic = createASTop(LST);   return LT; }
+">"  { yylval.generic = createASTop(GRT);   return GT; }
 
    /* Bitwise operators */
-"<<"  { yylval.generic = createASToperator(LEFT_SHIFT);  return L_SHIFT; }
-">>"  { yylval.generic = createASToperator(RIGHT_SHIFT); return R_SHIFT; }
-"&"   { yylval.generic = createASToperator(BIT_AND);     return BITAND; }
-"|"   { yylval.generic = createASToperator(BIT_OR);      return BITOR; }
-"^"   { yylval.generic = createASToperator(XOR);         return BITXOR; }
-"~"   { yylval.generic = createASToperator(BIT_NOT);     return BITNOT; }
+"<<"  { yylval.generic = createASTop(LEFT_SHIFT);  return L_SHIFT; }
+">>"  { yylval.generic = createASTop(RIGHT_SHIFT); return R_SHIFT; }
+"&"   { yylval.generic = createASTop(BIT_AND);     return BITAND; }
+"|"   { yylval.generic = createASTop(BIT_OR);      return BITOR; }
+"^"   { yylval.generic = createASTop(XOR);         return BITXOR; }
+"~"   { yylval.generic = createASTop(BIT_NOT);     return BITNOT; }
 
    /* Arithmetic operators */
-"+"   { yylval.generic = createASToperator(PLUS);      return ADD; }
-"-"   { yylval.generic = createASToperator(MINUS);     return SUB; }
-"*"   { yylval.generic = createASToperator(MULTIPLY);  return MUL; }
-"/"   { yylval.generic = createASToperator(DIVIDE);    return DIV; }
-"%"   { yylval.generic = createASToperator(MODULO);    return MOD; }
-"//"  { yylval.generic = createASToperator(FLOOR);     return FLDIV; }
-"**"  { yylval.generic = createASToperator(EXPONENT);  return EXP; }
+"+"   { yylval.generic = createASTop(PLUS);      return ADD; }
+"-"   { yylval.generic = createASTop(MINUS);     return SUB; }
+"*"   { yylval.generic = createASTop(MULTIPLY);  return MUL; }
+"/"   { yylval.generic = createASTop(DIVIDE);    return DIV; }
+"%"   { yylval.generic = createASTop(MODULO);    return MOD; }
+"//"  { yylval.generic = createASTop(FLOOR);     return FLDIV; }
+"**"  { yylval.generic = createASTop(EXPONENT);  return EXP; }
 
    /* Compound assignment operators */
-"+="   { yylval.generic = createASToperator(PLUS);        return PLUS_EQ; }
-"-="   { yylval.generic = createASToperator(MINUS);       return MINUS_EQ; }
-"*="   { yylval.generic = createASToperator(MULTIPLY);    return MUL_EQ; }
-"/="   { yylval.generic = createASToperator(DIVIDE);      return DIV_EQ; }
-"%="   { yylval.generic = createASToperator(MODULO);      return MOD_EQ; }
-"//="  { yylval.generic = createASToperator(FLOOR);       return FLDIV_EQ; }
-"**="  { yylval.generic = createASToperator(EXPONENT);    return EXP_EQ; }
-"<<="  { yylval.generic = createASToperator(LEFT_SHIFT);  return L_SHIFT_EQ; }
-">>="  { yylval.generic = createASToperator(RIGHT_SHIFT); return R_SHIFT_EQ; }
-"&="   { yylval.generic = createASToperator(BIT_AND);     return AND_EQ; }
-"|="   { yylval.generic = createASToperator(BIT_OR);      return OR_EQ; }
-"^="   { yylval.generic = createASToperator(XOR);         return XOR_EQ; }
+"+="   { yylval.generic = createASTop(PLUS);        return PLUS_EQ; }
+"-="   { yylval.generic = createASTop(MINUS);       return MINUS_EQ; }
+"*="   { yylval.generic = createASTop(MULTIPLY);    return MUL_EQ; }
+"/="   { yylval.generic = createASTop(DIVIDE);      return DIV_EQ; }
+"%="   { yylval.generic = createASTop(MODULO);      return MOD_EQ; }
+"//="  { yylval.generic = createASTop(FLOOR);       return FLDIV_EQ; }
+"**="  { yylval.generic = createASTop(EXPONENT);    return EXP_EQ; }
+"<<="  { yylval.generic = createASTop(LEFT_SHIFT);  return L_SHIFT_EQ; }
+">>="  { yylval.generic = createASTop(RIGHT_SHIFT); return R_SHIFT_EQ; }
+"&="   { yylval.generic = createASTop(BIT_AND);     return AND_EQ; }
+"|="   { yylval.generic = createASTop(BIT_OR);      return OR_EQ; }
+"^="   { yylval.generic = createASTop(XOR);         return XOR_EQ; }
 
    /* Numbers */
 {FLOAT} {

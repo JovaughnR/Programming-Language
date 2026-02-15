@@ -1,3 +1,5 @@
+#include <stdlib.h>
+
 #include "./lib/type.h"
 #include "./lib/utils.h"
 #include "./lib/dict.h"
@@ -7,20 +9,27 @@
 #include "./lib/error.h"
 #include "./lib/class.h"
 #include "./lib/exec.h"
+#include "./lib/format.h"
 #include "./lib/build.h"
 
 List *computeMRO(Class *cls, Runtime *parentRt);
 
-Data *extract_attribute_name(ASTnode *attrAst)
+void defineFunction(Function *func, Runtime *rt)
 {
-   if (!attrAst || !attrAst->data)
-      return NULL;
+   if (!func || !rt)
+      return;
 
-   // For simple lookups, return the variable name
-   if (attrAst->data->type == TYPE_LOOKUP && attrAst->data->any)
-      return (Data *)attrAst->data->any;
+   // Capture the current environment (closure)
+   func->env = rt->env;
 
-   return NULL;
+   if (func->env)
+      func->env->ref++;
+
+   Data *funcData = createData(TYPE_FUNCTION, func);
+   if (!funcData)
+      return;
+
+   saveInEnvironment(func->name, funcData, func->env);
 }
 
 void defineClass(Class *class, Runtime *rt)
@@ -36,14 +45,14 @@ void defineClass(Class *class, Runtime *rt)
    if (!class->isInitialize)
    {
       void *returns = NULL;
-      executeBody(class->statements, &returns, class->env);
+      executeBody(class->statements, &returns, class->rt);
       class->isInitialize = 1;
    }
 
    // Check if class is already in environment to avoid creating duplicate Data* wrappers
-   if (dict_has(class->name, rt->env->vars, dataCompare))
+   if (dict_has(class->name, rt->env->vars))
    {
-      Data *existing = dict_get(class->name, rt->env->vars, dataCompare);
+      Data *existing = dict_get(class->name, rt->env->vars);
       if (existing && existing->type == TYPE_CLASS && CLASS_PTR(existing) == class)
       {
          // Already properly registered
@@ -52,13 +61,13 @@ void defineClass(Class *class, Runtime *rt)
    }
    // Store class in environment
    Data *classData = createData(TYPE_CLASS, class);
-   insertIntoEnv(class->name, classData, rt->env);
+   saveInEnvironment(class->name, classData, rt->env);
 }
 
 // Helper function to compute MRO
 List *computeMRO(Class *cls, Runtime *parentRt)
 {
-   List *mro = createList(PARSE_SIZE);
+   List *mro = list_create(__size__);
    if (!cls->parents || cls->parents->length == 0)
       return mro;
 
@@ -69,7 +78,7 @@ List *computeMRO(Class *cls, Runtime *parentRt)
       if (!parent || parent->type != TYPE_CLASS)
       {
          throw_error(ERROR_TYPE, "Base must be a class");
-         freeData(parent);
+         data_free(parent);
          return NULL;
       }
 
@@ -84,8 +93,8 @@ List *computeMRO(Class *cls, Runtime *parentRt)
          defineClass(parentcls, parentRt);
          // After defineClass, the original 'parent' Data* may be freed
          // We need to get a fresh reference from the environment
-         freeData(parent);
-         parent = getData(parentClassName, parentRt);
+         data_free(parent);
+         parent = getData(parentClassName, parentRt->env);
          parentcls = CLASS_PTR(parent);
       }
 
@@ -101,7 +110,7 @@ List *computeMRO(Class *cls, Runtime *parentRt)
          }
       }
       if (!found)
-         append(parent, mro);
+         list_append(parent, mro);
 
       // Add parent's MRO
       if (parentcls->mro)
@@ -122,7 +131,7 @@ List *computeMRO(Class *cls, Runtime *parentRt)
             }
             // Add if not duplicate
             if (!found)
-               append(cloneData(ancestor), mro); // CLONE here too!
+               list_append(cloneData(ancestor), mro); // CLONE here too!
          }
       }
    }
@@ -138,7 +147,7 @@ static Dict *eval_kwargs(List *kwargsList, Runtime *rt)
    if (!kwargsList || kwargsList->length == 0)
       return NULL;
 
-   Dict *kwargs = createDict(kwargsList->length);
+   Dict *kwargs = dict_create(kwargsList->length);
    if (!kwargs)
       return NULL;
 
@@ -157,9 +166,9 @@ static Dict *eval_kwargs(List *kwargsList, Runtime *rt)
 static List *eval_args(List *args, Runtime *rt)
 {
    if (!args || args->length == 0)
-      return createList(PARSE_SIZE);
+      return list_create(__size__);
 
-   List *evaluated = createList(PARSE_SIZE);
+   List *evaluated = list_create(__size__);
    for (int i = 0; i < args->length; i++)
    {
       Data *val = executeAST((ASTnode *)args->items[i], rt);
@@ -199,8 +208,8 @@ static void bind_params(List *args, Dict *kwargs, Function *func, int startIdx, 
       int argIdx = i - startIdx;
       Data *value = NULL;
 
-      if (kwargs && dict_has(param->name, kwargs, dataCompare))
-         value = cloneData(get(param->name, kwargs, dataCompare));
+      if (kwargs && dict_has(param->name, kwargs))
+         value = cloneData(dict_get(param->name, kwargs));
 
       else if (argIdx < argsProvided)
          value = cloneData((Data *)args->items[argIdx]);
@@ -212,7 +221,7 @@ static void bind_params(List *args, Dict *kwargs, Function *func, int startIdx, 
       {
          throw_error(
              ERROR_TYPE, "%s() missing required argument: '%s'",
-             dataTostring(func->name), param->name->str.string);
+             dataTostring(func->name), param->name->str);
          return;
       }
 
@@ -234,15 +243,14 @@ static Data *execute_function(Function *func, List *args, Dict *kwargs, Data *ob
    Environment *prevEnv = rt->env;
 
    rt->env = funcEnv;
-
    int paramStart = 0;
 
    // If this is a method call, bind first param to instance
    if (object && func->params && func->params->length > 0)
    {
       ParamInfo *firstParam = (ParamInfo *)func->params->items[0];
-      Data *selfParam = cloneData(object);
-      saveInEnvironment(cloneData(firstParam->name), selfParam, funcEnv);
+      Data *thisParam = cloneData(object);
+      saveInEnvironment(cloneData(firstParam->name), thisParam, funcEnv);
       paramStart = 1;
    }
 
@@ -271,7 +279,7 @@ static Data *handle_class_call(Data *callee, List *args, Dict *kwargs, Runtime *
    if (!cls->isInitialize)
       defineClass(cls, rt);
 
-   Data *classInEnv = getData(cls->name, rt);
+   Data *classInEnv = getData(cls->name, rt->env);
 
    if (!classInEnv)
    {
@@ -282,23 +290,23 @@ static Data *handle_class_call(Data *callee, List *args, Dict *kwargs, Runtime *
       return createData(TYPE_NONE, NULL);
    }
 
-   Data *newInst = createData(classInEnv, rt);
+   Instance *newInst = createInstance(CLASS_PTR(classInEnv));
    Data *result = createData(TYPE_INSTANCE, newInst);
 
    // Look for constructor
    Data *ctorName = createData(TYPE_STR, CONSTRUCTOR_NAME);
-   Data *ctor = lookup_in_mro(cls, ctorName);
+   Data *ctor = getAttribute(callee, ctorName, rt);
 
    if (ctor && ctor->type == TYPE_FUNCTION)
    {
       Function *ctorFunc = FUNCTION_PTR(ctor);
       Data *ctorResult = execute_function(ctorFunc, args, kwargs, result, rt);
       if (ctorResult)
-         freeData(ctorResult);
+         data_free(ctorResult);
    }
 
-   freeData(ctorName);
-   freeData(classInEnv);
+   data_free(ctorName);
+   data_free(classInEnv);
    return result;
 }
 
@@ -342,74 +350,53 @@ static Data *handle_function_call(Data *callee, List *args, Dict *kwargs, Runtim
 //  Main Entry Point (Clean & Simple)
 //=========================================================
 
-static Attribute *extract_attribute(Invoked *caller)
-{
-   if (caller->postfix && caller->postfix->data &&
-       caller->postfix->data->type == TYPE_ATTRIBUTE)
-   {
-      return (Attribute *)caller->postfix->data->any;
-   }
-   return NULL;
-}
-
-static Data *extract_attribute_method(Invoked *caller, Runtime *rt)
-{
-   Attribute *attr = extract_attribute(caller);
-   if (!attr)
-      return NULL;
-
-   Data *object = executeAST(attr->object, rt);
-   Data *methodName = attr->attrib;
-
-   return getAttribute(object, methodName);
-}
-
 Data *executeInvoked(Invoked *caller, Runtime *rt)
 {
-   if (!caller || !rt)
+   if (!caller || !caller->postfix || !rt || !caller->postfix->data)
       return createData(TYPE_NONE, NULL);
 
    Data *result = NULL;
-   List *args = NULL;
-   Dict *kwargs = NULL;
+   Data *callee = caller->postfix->data;
+
+   List *args = eval_args(caller->args, rt);
+   Dict *kwargs = eval_kwargs(caller->kwargs, rt);
 
    // Check if postfix is an ATTRIBUTE (method call case: obj.method())
-
-   if (caller->postfix && caller->postfix->data &&
-       caller->postfix->data->type == TYPE_ATTRIBUTE)
+   if (callee->type == TYPE_ATTRIBUTE)
    {
-      Data *data = caller->postfix->data;
-      Attribute *attr = (Attribute *)data->any;
+      Attribute *attr = (Attribute *)callee->any;
 
-      // Get the instance
       Data *object = executeAST(attr->object, rt);
-      Data *methodName = attr->attrib;
-
-      // Look up the method
-      Data *method = getAttribute(object, methodName);
+      Data *name = attr->attrib;
+      Data *method = getAttribute(object, name, rt);
+      Data *result = NULL;
 
       // Call the method
-      args = eval_args(caller->args, rt);
-      kwargs = eval_kwargs(caller->kwargs, rt);
+      switch (method->type)
+      {
+      case TYPE_BUILTIN:
+         result = dispatchMethod(object, method, args, kwargs, rt);
+         break;
 
-      Function *func = FUNCTION_PTR(method);
-      result = execute_function(func, args, kwargs, object, rt);
+      case TYPE_FUNCTION:
+      {
+         Function *func = FUNCTION_PTR(method);
+         result = execute_function(func, args, kwargs, object, rt);
+         break;
+      }
+      default:
+         throw_error(ERROR_RUNTIME, "Unknown method");
+         break;
+      }
 
-      freeData(object);
-      freeData(method);
-
-      freeList(args, TYPE_DATA);
-      freeDict(kwargs);
-
+      data_free(object);
+      list_free(args, data_free);
+      dict_free(kwargs);
       return result;
    }
 
    // Evaluate the postfix to get the callable
    Data *target = executeAST(caller->postfix, rt);
-
-   // Regular function/class/builtin call (func(args))
-   args = eval_args(caller->args, rt);
-   kwargs = eval_kwargs(caller->kwargs, rt);
 
    switch (target->type)
    {
@@ -429,10 +416,10 @@ Data *executeInvoked(Invoked *caller, Runtime *rt)
    }
 
    if (args)
-      freeList(args, TYPE_DATA);
+      list_free(args, data_free);
    if (kwargs)
-      freeDict(kwargs);
-   freeData(target);
+      dict_free(kwargs);
+   data_free(target);
 
    return result ? result : createData(TYPE_NONE, NULL);
 }

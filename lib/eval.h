@@ -11,7 +11,7 @@
  * @param operand Pointer to the evaluated operand Data.
  * @return Pointer to resulting Data object.
  */
-Instance *handleUnaryOperation(Instance *operand, Operator op);
+Data *handleUnaryOperation(Data *operand, Operator op);
 /**
  * Routes binary operations to the appropriate handler based on operand types.
  *
@@ -20,8 +20,9 @@ Instance *handleUnaryOperation(Instance *operand, Operator op);
  * @param op The operator.
  * @return Pointer to resulting Data object.
  */
-Instance *handleBinaryOperation(Instance *x, Instance *y, Operator op);
-Instance *evalListInDepth(Instance *list_instance, Runtime *rt, ExecFn exec);
-Instance *evalSetInDepth(Instance *set_instance, Runtime *rt, ExecFn exec);
-Instance *evalDictInDepth(Instance *dict_instance, Runtime *rt, ExecFn exec);
+Data *handleBinaryOperation(Data *x, Data *y, Operator op);
+Data *evalListValues(Data *list_Data, Runtime *rt);
+Data *evalSetValues(Data *set_Data, Runtime *rt);
+Data *evalDictValues(Data *dict_Data, Runtime *rt);
+
 #endif // EVAL_H

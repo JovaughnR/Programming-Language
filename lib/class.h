@@ -3,12 +3,8 @@
 
 #include "type.h"
 
-Instance *extract_attribute_name(ASTnode *attrAst);
-Instance *lookup_in_mro(Class *cls, Instance *name);
-void defineClass(Class *cls, Runtime *rt);
-Instance *get_instance_attr(Instance *inst, Instance *name);
-// Helper function to compute MRO
-List *computeMRO(Class *cls, Runtime *parentRt);
-void setInstanceAttribute(Instance *instance, Instance *attrName, Data *value);
+void defineFunction(Function *func, Runtime *rt);
+void defineClass(Class *class, Runtime *rt);
 
+Data *executeInvoked(Invoked *caller, Runtime *rt);
 #endif // CLASS_H

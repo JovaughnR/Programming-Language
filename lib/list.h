@@ -13,7 +13,9 @@ typedef struct List
    int capacity;
 } List;
 
-typedef int (*Compare)(const void *, const void *);
+extern int datacmp(const void *d1, const void *d2);
+extern void *cloneData(const void *d);
+extern int compare_numeric_data(const void *a, const void *b);
 
 /**
  * Creates a new list with an initial capacity of 10.
@@ -66,7 +68,7 @@ int list_insert(List *list, int index, void *value);
  *
  * @return LIST_SUCCESS if removed, LIST_ERROR if not found or list is NULL.
  */
-int list_remove(void *value, List *list, void (*freeItem)(void *));
+int list_remove(void *value, List *list, void (*item_free)(const void *));
 /**
  * Retrieves the value at a given index (like Python list[index]).
  *
@@ -85,7 +87,7 @@ void *list_get(int index, List *list);
  *
  * @return LIST_SUCCESS if replaced, LIST_ERROR if index is invalid or list is NULL.
  */
-int list_set(int index, void *value, List *list);
+int list_set(int index, void *value, List *list, void (*item_free)(const void *));
 /**
  * Returns the number of elements in the list (like Python len(list)).
  *
@@ -101,7 +103,7 @@ int list_length(List *list);
  *
  * Frees all allocated items but does not deallocate the list itself.
  */
-void list_clear(List *list);
+void list_clear(List *list, void (*item_free)(const void *));
 /**
  * Returns the index of a value in the list (like Python list.index()).
  *
@@ -110,7 +112,7 @@ void list_clear(List *list);
  *
  * @return Index of the element, or -1 if not found.
  */
-int list_index(void *value, List *list, Compare cmp);
+int list_index(void *value, List *list);
 /**
  * Checks whether a value exists in the List .
  *
@@ -119,7 +121,7 @@ int list_index(void *value, List *list, Compare cmp);
  *
  * @return 1 if found, 0 otherwise.
  */
-int list_has(void *value, List *list, Compare cmp);
+int list_has(void *value, List *list);
 
 List *list_concat(List *a, List *b);
 
@@ -141,7 +143,7 @@ List *list_repeat(int times, List *list);
  * @param cmp Comparator function to compare elements. Should return 0 if equal.
  * @return 1 if equal, 0 otherwise.
  */
-int lists_equal(List *a, List *b, int (*cmp)(const void *, const void *));
+int list_equal(List *a, List *b);
 /**
  * Compares two lists for inequality (like Python list1 != list2).
  *
@@ -150,7 +152,7 @@ int lists_equal(List *a, List *b, int (*cmp)(const void *, const void *));
  * @param cmp Comparator function to compare elements. Should return 0 if equal.
  * @return 1 if not equal, 0 if equal.
  */
-int list_not_equal(List *a, List *b, int (*cmp)(const void *, const void *));
+int list_not_equal(List *a, List *b);
 /**
  * Lexicographically compares two lists (like Python list1 < list2).
  *
@@ -159,7 +161,7 @@ int list_not_equal(List *a, List *b, int (*cmp)(const void *, const void *));
  * @param cmp Comparator function for elements.
  * @return 1 if a < b, 0 otherwise.
  */
-int list_less(List *a, List *b, int (*cmp)(const void *, const void *));
+int list_less(List *a, List *b);
 /**
  * Lexicographically compares two lists (like Python list1 <= list2).
  *
@@ -168,7 +170,7 @@ int list_less(List *a, List *b, int (*cmp)(const void *, const void *));
  * @param cmp Comparator function for elements.
  * @return 1 if a <= b, 0 otherwise.
  */
-int list_less_equal(List *a, List *b, int (*cmp)(const void *, const void *));
+int list_less_equal(List *a, List *b);
 
 /**
  * Lexicographically compares two lists (like Python list1 > list2).
@@ -178,7 +180,7 @@ int list_less_equal(List *a, List *b, int (*cmp)(const void *, const void *));
  * @param cmp Comparator function for elements.
  * @return 1 if a > b, 0 otherwise.
  */
-int list_greater(List *a, List *b, Compare cmp);
+int list_greater(List *a, List *b);
 /**
  * Lexicographically compares two lists (like Python list1 >= list2).
  *
@@ -187,9 +189,7 @@ int list_greater(List *a, List *b, Compare cmp);
  * @param cmp Comparator function for elements.
  * @return 1 if a >= b, 0 otherwise.
  */
-int list_greater_equal(List *a, List *b, Compare cmp);
-
-List *list_sorted(List *list);
+int list_greater_equal(List *a, List *b);
 
 void list_extend(List *src, List *other);
 
@@ -197,5 +197,8 @@ void list_reverse(List *src);
 
 List *list_clone(List *original);
 
-void list_free(List *list, void (*freeItem)(void *));
+void list_free(List *list, void (*item_free)(const void *));
+
+List *list_slice(int start, int end, int step, List *list);
+
 #endif

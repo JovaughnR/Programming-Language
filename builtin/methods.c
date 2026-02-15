@@ -37,16 +37,19 @@ Data *builtin_print(List *args, Dict *kwargs)
    if (kwargs)
    {
       Data *sep_key = createData(TYPE_STR, "sep");
-      Data *sep_data = get(sep_key, kwargs);
+      Data *sep_data = dict_get(sep_key, kwargs);
+
       if (sep_data && sep_data->type == TYPE_STR)
-         sep = sep_data->str.string;
-      freeData(sep_key);
+         sep = sep_data->str;
 
       Data *end_key = createData(TYPE_STR, "end");
-      Data *end_data = get(end_key, kwargs);
+      Data *end_data = dict_get(end_key, kwargs);
+
       if (end_data && end_data->type == TYPE_STR)
-         end = end_data->str.string;
-      freeData(end_key);
+         end = end_data->str;
+
+      data_free(sep_key);
+      data_free(end_key);
    }
 
    // Print all arguments
@@ -68,11 +71,11 @@ static int evalRangePart(Data *val)
    if (!isInt(val))
    {
       throw_error(ERROR_TYPE, "'%s' object cannot be interpreted as an integer", getDataType(val->type));
-      freeData(val);
+      data_free(val);
       return 0;
    }
 
-   return *(int *)val->integer.atom;
+   return *(int *)val->atom;
 }
 
 // input(prompt="")
@@ -124,13 +127,13 @@ Data *builtin_int(Data *obj)
    {
    case TYPE_INT:
    case TYPE_BOOL:
-      result = *(int *)obj->integer.atom;
+      result = *(int *)obj->atom;
       break;
    case TYPE_FLOAT:
-      result = (int)(*(double *)obj->decimal.real);
+      result = (int)(*(double *)obj->real);
       break;
    case TYPE_STR:
-      result = atoi((char *)obj->str.string);
+      result = atoi((char *)obj->str);
       break;
    default:
       fprintf(stderr, "Error: Cannot convert type to int\n");
@@ -148,13 +151,13 @@ Data *builtin_float(Data *obj)
    {
    case TYPE_INT:
    case TYPE_BOOL:
-      result = (double)(*(int *)obj->integer.atom);
+      result = (double)(*(int *)obj->atom);
       break;
    case TYPE_FLOAT:
-      result = *(double *)obj->decimal.real;
+      result = *(double *)obj->real;
       break;
    case TYPE_STR:
-      result = atof((char *)obj->str.string);
+      result = atof((char *)obj->str);
       break;
    default:
       fprintf(stderr, "Error: Cannot convert type to float\n");
@@ -196,7 +199,7 @@ Data *builtin_len(Data *obj)
    switch (obj->type)
    {
    case TYPE_STR:
-      length = strlen((char *)obj->str.string);
+      length = strlen((char *)obj->str);
       break;
    case TYPE_LIST:
    {
@@ -216,6 +219,11 @@ Data *builtin_len(Data *obj)
       length = set->capacity;
       break;
    }
+
+   case TYPE_RANGE:
+      length = rangelen(obj->range);
+      break;
+
    default:
       fprintf(stderr, "Error: Type has no length\n");
       return createData(TYPE_INT, &length);
@@ -233,12 +241,12 @@ Data *builtin_abs(Data *obj)
 {
    if (obj->type == TYPE_INT)
    {
-      int value = abs(*(int *)obj->integer.atom);
+      int value = abs(*(int *)obj->atom);
       return createData(TYPE_INT, &value);
    }
    else if (obj->type == TYPE_FLOAT)
    {
-      double value = fabs(*(double *)obj->integer.atom);
+      double value = fabs(*(double *)obj->atom);
       return createData(TYPE_FLOAT, &value);
    }
 
@@ -253,9 +261,9 @@ Data *builtin_pow(Data *base, Data *exp)
    double b = 0.0, e = 0.0;
 
    if (base->type == TYPE_INT)
-      b = (double)(*(int *)base->integer.atom);
+      b = (double)(*(int *)base->atom);
    else if (base->type == TYPE_FLOAT)
-      b = *(double *)base->decimal.real;
+      b = *(double *)base->real;
    else
    {
       fprintf(stderr, "Error: pow() requires numeric types\n");
@@ -263,9 +271,9 @@ Data *builtin_pow(Data *base, Data *exp)
    }
 
    if (exp->type == TYPE_INT)
-      e = (double)(*(int *)exp->integer.atom);
+      e = (double)(*(int *)exp->atom);
    else if (exp->type == TYPE_FLOAT)
-      e = *(double *)exp->decimal.real;
+      e = *(double *)exp->real;
    else
    {
       fprintf(stderr, "Error: pow() requires numeric types\n");
@@ -286,7 +294,7 @@ Data *builtin_round(Data *obj, int ndigits)
       return obj;
 
    else if (obj->type == TYPE_FLOAT)
-      value = *(double *)obj->decimal.real;
+      value = *(double *)obj->real;
 
    else
    {
@@ -317,20 +325,20 @@ Data *builtin_split(Data *str_data, const char *sep)
    if (str_data->type != TYPE_STR)
    {
       fprintf(stderr, "Error: split() requires a string\n");
-      return createData(TYPE_LIST, createList(RUNTIME_SIZE));
+      return createData(TYPE_LIST, list_create(__len__));
    }
 
    if (sep == NULL)
       sep = " ";
 
-   char *str = strdup((char *)str_data->str.string);
-   List *result = createList(RUNTIME_SIZE);
+   char *str = strdup((char *)str_data->str);
+   List *result = list_create(__len__);
 
    char *token = strtok(str, sep);
    while (token != NULL)
    {
       Data *elem = createData(TYPE_STR, strdup(token));
-      append(elem, result);
+      list_append(elem, result);
       token = strtok(NULL, sep);
    }
 
@@ -351,14 +359,14 @@ Data *builtin_join(Data *list_data, const char *sep)
    if (sep == NULL)
       sep = "";
 
-   List *list = list_ptr(list_data);
+   List *list = LIST_PTR(list_data);
    size_t total_len = 0;
 
    // Calculate total length
    for (int i = 0; i < list->length; i++)
    {
       if (((Data *)list->items[i])->type == TYPE_STR)
-         total_len += strlen((char *)((Data *)(list->items[i]))->str.string);
+         total_len += strlen((char *)((Data *)(list->items[i]))->str);
 
       if (i < list->length - 1)
          total_len += strlen(sep);
@@ -371,7 +379,7 @@ Data *builtin_join(Data *list_data, const char *sep)
    {
       if (((Data *)list->items[i])->type == TYPE_STR)
       {
-         strcat(result, (char *)((Data *)list->items[i])->str.string);
+         strcat(result, (char *)((Data *)list->items[i])->str);
       }
       if (i < list->length - 1)
       {
@@ -382,19 +390,14 @@ Data *builtin_join(Data *list_data, const char *sep)
    return createData(TYPE_STR, result);
 }
 
-//=========================================================
-//  Utility Functions
-//=========================================================
-
 // reversed(list)
 // Returns reversed copy of list
 
-// builtin_append()
 Data *builtin_list(Data *data)
 {
    // If no argument provided, return empty list
    if (!data || data->type == TYPE_NONE)
-      return createData(TYPE_LIST, createList(RUNTIME_SIZE));
+      return createData(TYPE_LIST, list_create(__len__));
 
    // Otherwise, convert the iterable to a list
    return createData(TYPE_LIST, resolveIterable(data));
@@ -407,55 +410,65 @@ Data *builtin_dict(Data *data)
       throw_error(ERROR_VALUE, "dictionary sequence can't be updated");
       return NULL;
    }
-   Dict *dict = dict_clone(DICT_PTR(data), cloneData);
+   Dict *dict = dict_clone(DICT_PTR(data));
    if (dict)
       return createData(TYPE_DICT, dict);
 
-   return createData(TYPE_DICT, createDict(256));
+   return createData(TYPE_DICT, dict_create(256));
 }
 
 Data *builtin_set(Data *data)
 {
    if (!data || data->type == TYPE_NONE)
-      return createData(TYPE_SET, createSet());
+      return createData(TYPE_SET, set_create());
 
    Set *set = NULL;
    if (data->type == TYPE_LIST)
    {
-      set = createSet();
-      List *list = list_ptr(data);
+      set = set_create();
+      List *list = LIST_PTR(data);
 
       for (int i = 0; i < list->length; i++)
-         set_add(list->items[i], set, dataCompare);
+         set_add(list->items[i], set);
    }
 
    else if (data->type == TYPE_DICT)
    {
-      List *keys = dict_keys(dict_ptr(data));
-      return builtin_set(createData(TYPE_LIST, keys));
+      Dict *dict = DICT_PTR(data);
+      set = set_create();
+
+      for (int i = 0; i < dict->size; i++)
+      {
+         Pair *pair = dict->buckets[i];
+         while (pair)
+         {
+            set_add(cloneData(pair->key), set);
+            pair = pair->next;
+         }
+      }
    }
 
    else if (data->type == TYPE_STR)
    {
-      set = createSet();
+      set = set_create();
+      const char *str = data->str;
 
-      char *str = data->str.string;
       for (int i = 0; i < (int)strlen(str); i++)
       {
          char *character = str_char_at(str, i);
-         set_add(createData(TYPE_STR, character), set, dataCompare);
+         set_add(createData(TYPE_STR, character), set);
       }
    }
 
    else if (data->type == TYPE_SET)
-      set = set_clone(SET_PTR(data), dataCompare, cloneData);
+      set = set_clone(SET_PTR(data));
 
    else if (data->type == TYPE_RANGE)
    {
-      set = createSet();
+      set = set_create();
       Range *r = data->range;
       for (int i = r->start; i < r->stop; i += r->step)
-         set_add(createData(TYPE_INT, &i), set, dataCompare);
+         set_add(createData(TYPE_INT, &i), set);
    }
 
    else
@@ -514,7 +527,7 @@ static int compare_data(const void *a, const void *b)
    if (isNumeric(data_a->type) && isNumeric(data_b->type))
    {
       long val_a = valueToFloat(data_a);
-      long val_b = valueToFloat(val_b);
+      long val_b = valueToFloat(data_b);
       return (val_a > val_b) - (val_a < val_b);
    }
 
@@ -531,8 +544,8 @@ static int compare_data(const void *a, const void *b)
 
    case TYPE_STR:
    {
-      char *str_a = (char *)data_a->str.string;
-      char *str_b = (char *)data_b->str.string;
+      char *str_a = (char *)data_a->str;
+      char *str_b = (char *)data_b->str;
       if (!str_a && !str_b)
          return 0;
       if (!str_a)
@@ -590,21 +603,20 @@ Data *builtin_sorted(Data *object)
       if (!cloned)
       {
          // Cleanup on failure
-         list_clear(result);
+         list_clear(result, data_free);
          free(result->items);
          free(result);
          return NULL;
       }
-      if (append(cloned, result) != LIST_SUCCESS)
+      if (list_append(cloned, result) != LIST_SUCCESS)
       {
-         freeData(cloned);
-         list_clear(result);
+         data_free(cloned);
+         list_clear(result, data_free);
          free(result->items);
          free(result);
          return NULL;
       }
-
-      qsort(result->items, result->length, sizeof(void *), compare_data);
-      return result;
    }
+   qsort(result->items, result->length, sizeof(void *), compare_data);
+   return createData(TYPE_LIST, result);
 }

@@ -47,58 +47,62 @@
      IMPORT = 263,
      AS = 264,
      FUNCTION = 265,
-     NEWLINE = 266,
+     NL = 266,
      RETURN = 267,
      CONTINUE = 268,
      BREAK = 269,
-     WHILE = 270,
-     FOR = 271,
-     IN = 272,
-     IF = 273,
-     ELIF = 274,
-     ELSE = 275,
-     GLOBAL = 276,
-     NONLOCAL = 277,
-     VARIABLE = 278,
-     STRING = 279,
-     INTEGER = 280,
-     DECIMAL = 281,
-     ADD = 282,
-     SUB = 283,
-     MUL = 284,
-     DIV = 285,
-     MOD = 286,
-     FLDIV = 287,
-     EXP = 288,
-     BITAND = 289,
-     BITOR = 290,
-     BITXOR = 291,
-     L_SHIFT = 292,
-     R_SHIFT = 293,
-     PLUS_EQ = 294,
-     MINUS_EQ = 295,
-     DIV_EQ = 296,
-     MUL_EQ = 297,
-     MOD_EQ = 298,
-     L_SHIFT_EQ = 299,
-     R_SHIFT_EQ = 300,
-     XOR_EQ = 301,
-     FLDIV_EQ = 302,
-     EXP_EQ = 303,
-     AND_EQ = 304,
-     OR_EQ = 305,
-     TRUE = 306,
-     FALSE = 307,
-     NONE = 308,
-     LOGIC_AND = 309,
-     LOGIC_OR = 310,
-     INVERT = 311,
-     EQ = 312,
-     NE = 313,
-     LT = 314,
-     GT = 315,
-     GE = 316,
-     LE = 317
+     TRY = 270,
+     CATCH = 271,
+     FINALLY = 272,
+     WHILE = 273,
+     FOR = 274,
+     IN = 275,
+     IF = 276,
+     ELIF = 277,
+     ELSE = 278,
+     GLOBAL = 279,
+     NONLOCAL = 280,
+     VARIABLE = 281,
+     STRING = 282,
+     INTEGER = 283,
+     DECIMAL = 284,
+     ADD = 285,
+     SUB = 286,
+     MUL = 287,
+     DIV = 288,
+     MOD = 289,
+     FLDIV = 290,
+     EXP = 291,
+     BITAND = 292,
+     BITOR = 293,
+     BITXOR = 294,
+     L_SHIFT = 295,
+     R_SHIFT = 296,
+     BITNOT = 297,
+     PLUS_EQ = 298,
+     MINUS_EQ = 299,
+     DIV_EQ = 300,
+     MUL_EQ = 301,
+     MOD_EQ = 302,
+     L_SHIFT_EQ = 303,
+     R_SHIFT_EQ = 304,
+     XOR_EQ = 305,
+     FLDIV_EQ = 306,
+     EXP_EQ = 307,
+     AND_EQ = 308,
+     OR_EQ = 309,
+     TRUE = 310,
+     FALSE = 311,
+     NONE = 312,
+     LOGIC_AND = 313,
+     LOGIC_OR = 314,
+     INVERT = 315,
+     EQ = 316,
+     NE = 317,
+     LT = 318,
+     GT = 319,
+     GE = 320,
+     LE = 321
    };
 #endif
 /* Tokens.  */
@@ -110,70 +114,74 @@
 #define IMPORT 263
 #define AS 264
 #define FUNCTION 265
-#define NEWLINE 266
+#define NL 266
 #define RETURN 267
 #define CONTINUE 268
 #define BREAK 269
-#define WHILE 270
-#define FOR 271
-#define IN 272
-#define IF 273
-#define ELIF 274
-#define ELSE 275
-#define GLOBAL 276
-#define NONLOCAL 277
-#define VARIABLE 278
-#define STRING 279
-#define INTEGER 280
-#define DECIMAL 281
-#define ADD 282
-#define SUB 283
-#define MUL 284
-#define DIV 285
-#define MOD 286
-#define FLDIV 287
-#define EXP 288
-#define BITAND 289
-#define BITOR 290
-#define BITXOR 291
-#define L_SHIFT 292
-#define R_SHIFT 293
-#define PLUS_EQ 294
-#define MINUS_EQ 295
-#define DIV_EQ 296
-#define MUL_EQ 297
-#define MOD_EQ 298
-#define L_SHIFT_EQ 299
-#define R_SHIFT_EQ 300
-#define XOR_EQ 301
-#define FLDIV_EQ 302
-#define EXP_EQ 303
-#define AND_EQ 304
-#define OR_EQ 305
-#define TRUE 306
-#define FALSE 307
-#define NONE 308
-#define LOGIC_AND 309
-#define LOGIC_OR 310
-#define INVERT 311
-#define EQ 312
-#define NE 313
-#define LT 314
-#define GT 315
-#define GE 316
-#define LE 317
+#define TRY 270
+#define CATCH 271
+#define FINALLY 272
+#define WHILE 273
+#define FOR 274
+#define IN 275
+#define IF 276
+#define ELIF 277
+#define ELSE 278
+#define GLOBAL 279
+#define NONLOCAL 280
+#define VARIABLE 281
+#define STRING 282
+#define INTEGER 283
+#define DECIMAL 284
+#define ADD 285
+#define SUB 286
+#define MUL 287
+#define DIV 288
+#define MOD 289
+#define FLDIV 290
+#define EXP 291
+#define BITAND 292
+#define BITOR 293
+#define BITXOR 294
+#define L_SHIFT 295
+#define R_SHIFT 296
+#define BITNOT 297
+#define PLUS_EQ 298
+#define MINUS_EQ 299
+#define DIV_EQ 300
+#define MUL_EQ 301
+#define MOD_EQ 302
+#define L_SHIFT_EQ 303
+#define R_SHIFT_EQ 304
+#define XOR_EQ 305
+#define FLDIV_EQ 306
+#define EXP_EQ 307
+#define AND_EQ 308
+#define OR_EQ 309
+#define TRUE 310
+#define FALSE 311
+#define NONE 312
+#define LOGIC_AND 313
+#define LOGIC_OR 314
+#define INVERT 315
+#define EQ 316
+#define NE 317
+#define LT 318
+#define GT 319
+#define GE 320
+#define LE 321
 
 
 
 
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 typedef union YYSTYPE
-#line 33 "parser.y"
+#line 37 "./parse/parser.y"
 {
    void *generic;
 }
 /* Line 1529 of yacc.c.  */
-#line 177 "y.tab.h"
+#line 185 "y.tab.h"
 	YYSTYPE;
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
 # define YYSTYPE_IS_DECLARED 1

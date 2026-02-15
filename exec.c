@@ -10,32 +10,106 @@
 #include "./lib/error.h"
 #include "./lib/eval.h"
 #include "./lib/maloc.h"
+#include "./lib/module.h"
 #include "./lib/class.h"
+#include "./lib/daloc.h"
+#include "./lib/format.h"
 
 // Function prototypes
 Data *executeAST(ASTnode *node, Runtime *rt);
-Status executeBody(List *body, void **returns, Environment *env);
-void defineFunction(Function *func, Runtime *rt);
-void defineClass(Class *class, Runtime *rt);
-void executeGlobal(VarDecl *decl, Runtime *rt);
-void executeNonlocal(VarDecl *decl, Runtime *rt);
-
-// extern char *error_msg;
-// extern ErrorType error_type;
+Status executeBody(List *body, void **returns, Runtime *rt);
 
 /**
- * Function: executeFlow
- * Recursively evaluates an IF-ELIF-ELSE statement.
- *
- * Parameters:
- * - stmt: The IF statement to evaluate.
- * - scopes: The scope stack.
- * - returns: Pointer to store return values.
- *
- * Returns:
- * - Status code indicating flow control (FLOW_NORMAL, FLOW_RETURN, etc.)
+ * Marks a variable as global in the current scope
  */
-Status executeFlow(Flow *stmt, Runtime *rt, void **returns)
+static void global_exec(char *var, Runtime *rt)
+{
+   if (!var || !rt)
+      return;
+
+   Environment *globalEnv = rt->env;
+
+   while (globalEnv->parent)
+      globalEnv = globalEnv->parent;
+
+   Environment *currentEnv = rt->env;
+
+   // If we're already in global scope, nothing to do
+   if (currentEnv == globalEnv)
+      return;
+
+   // Check if variable is already declared in local scope
+   if (dict_has(var, currentEnv->vars))
+   {
+      throw_error(
+          ERROR_SYNTAX,
+          "name '%s' is assigned to before global declaration",
+          var);
+      return;
+   }
+
+   // Mark this variable as global in current scope
+   Data *marker = createData(TYPE_INT, &(int){1});
+   Data *name = createData(TYPE_STR, var);
+
+   dict_insert(name, marker, currentEnv->global_vars);
+
+   // Initialize in global scope if it doesn't exist
+   if (!dict_has(name, globalEnv->vars))
+   {
+      Data *none = createData(TYPE_NONE, NULL);
+      saveInEnvironment(name, none, globalEnv);
+   }
+
+   data_free(name);
+   free(var);
+}
+
+static void nonlocal_exec(char *var, Runtime *rt)
+{
+   if (!var || !rt)
+      return;
+
+   Environment *currentEnv = rt->env;
+
+   // Check if we're in global scope
+   if (currentEnv->parent == NULL)
+   {
+      throw_error(
+          ERROR_SYNTAX,
+          "nonlocal declaration not allowed at module level");
+      return;
+   }
+
+   // Check if variable is already declared in local scope
+   if (dict_has(var, currentEnv->vars))
+   {
+      throw_error(
+          ERROR_SYNTAX,
+          "name '%s' is assigned to before nonlocal declaration",
+          var);
+      return;
+   }
+
+   // Find the variable in an enclosing scope
+   Data *name = createData(TYPE_STR, var);
+   Environment *enclosingScope = findEnclosingScope(name, rt);
+
+   if (!enclosingScope)
+   {
+      throw_error(
+          ERROR_SYNTAX,
+          "no binding for nonlocal '%s' found",
+          var);
+      return;
+   }
+
+   Data *marker = createData(TYPE_INT, &(int){1});
+   dict_insert(name, marker, currentEnv->nonlocal_vars);
+   free(var);
+}
+
+static Status executeFlow(Flow *stmt, Runtime *rt, void **returns)
 {
    if (!stmt)
       return FLOW_NORMAL;
@@ -55,10 +129,10 @@ Status executeFlow(Flow *stmt, Runtime *rt, void **returns)
 
    int condValue = 0;
 
-   if (cond && cond->integer.atom)
-      condValue = *(int *)cond->integer.atom;
+   if (cond && cond->atom)
+      condValue = *(int *)cond->atom;
 
-   freeData(cond);
+   data_free(cond);
 
    if (condValue)
    {
@@ -81,7 +155,7 @@ Status executeFlow(Flow *stmt, Runtime *rt, void **returns)
    return FLOW_NORMAL;
 }
 
-Status executeWhile(WhileLoop *loop, Runtime *rt, void **returns)
+static Status executeWhile(WhileLoop *loop, Runtime *rt, void **returns)
 {
    if (!loop)
       return FLOW_NORMAL;
@@ -95,9 +169,9 @@ Status executeWhile(WhileLoop *loop, Runtime *rt, void **returns)
 
       int condValue = 0;
       if (cond->type == TYPE_BOOL || cond->type == TYPE_INT)
-         condValue = *(int *)cond->integer.atom;
+         condValue = *(int *)cond->atom;
 
-      freeData(cond);
+      data_free(cond);
       if (condValue == 0)
          break;
 
@@ -119,28 +193,12 @@ Status executeWhile(WhileLoop *loop, Runtime *rt, void **returns)
 /**
  * @brief Binds the loop iterator to the current element.
  */
-void bindIteratorValue(char *iterator, Data *iter, Runtime *rt)
+static void bindIteratorValue(Data *iterator, Data *iter, Runtime *rt)
 {
    if (!iterator || !iter || !rt)
       return;
-   saveInEnvironment(cloneInstance(iterator), cloneInstance(iter), rt->env);
-}
 
-/**
- * Handles flow control status after executing the loop body.
- * Returns 1 if the loop should break (either BREAK or RETURN),
- * 0 otherwise (CONTINUE or normal execution).
- */
-// Helper function to get the iterable data
-
-static Data *getIterableData(ASTnode *iterableAst, Runtime *rt)
-{
-   if (!iterableAst)
-      return NULL;
-
-   // Evaluate the AST to get the actual iterable data
-   Data *iterable = executeAST(iterableAst, rt);
-   return iterable;
+   saveInEnvironment(cloneData(iterator), cloneData(iter), rt->env);
 }
 
 // Helper function to handle loop body execution and flow control
@@ -228,9 +286,9 @@ static Status iterateString(ForLoop *loop, char *str, void **returns, Runtime *r
 
    for (int i = 0; i < len && !shouldBreak; i++)
    {
-      Data *item = createInstance(TYPE_STR, str_char_at(str, i));
+      Data *item = createData(TYPE_STR, str_char_at(str, i));
       Status status = executeLoopIteration(loop, item, returns, rt, &shouldBreak);
-      freeData(item);
+      data_free(item);
 
       if (status == FLOW_RETURN)
          return status;
@@ -240,13 +298,13 @@ static Status iterateString(ForLoop *loop, char *str, void **returns, Runtime *r
 }
 
 // Main for loop execution function
-Status executeFor(ForLoop *loop, Runtime *rt, void **returns)
+static Status executeFor(ForLoop *loop, Runtime *rt, void **returns)
 {
    if (!loop)
       return FLOW_NORMAL;
 
    // Evaluate the iterable expression
-   Data *iterable = getIterableData(loop->iterable, rt);
+   Data *iterable = executeAST(loop->iterable, rt);
    if (!iterable)
       return FLOW_NORMAL;
 
@@ -262,7 +320,7 @@ Status executeFor(ForLoop *loop, Runtime *rt, void **returns)
       return iterateRange(loop, iterable->range, returns, rt);
 
    case TYPE_STR:
-      return iterateString(loop, iterable->str.string, returns, rt);
+      return iterateString(loop, iterable->str, returns, rt);
 
    default:
    {
@@ -276,65 +334,79 @@ Status executeFor(ForLoop *loop, Runtime *rt, void **returns)
 // For List and Strings
 static Data *getFromIndex(Indexed *data, Runtime *rt)
 {
-   Data *object = executeAST(createASTnode(data->variable), rt);
+   Data *object = executeAST(data->object, rt);
    Data *index = executeAST(data->value, rt);
+   void *result = NULL;
 
-   void *result;
-
-   int idx = validateIndex(index, object);
-   if (idx == 1)
-      return NULL;
-
-   switch (object->type)
+   if (object->type == TYPE_DICT)
    {
-   case TYPE_DICT:
-      result = dict_get(index, DICT_PTR(object), dataCompare);
+      result = dict_get(index, DICT_PTR(object));
+      data_free(object);
+      data_free(index);
       if (!result)
-         throw_error(ERROR_KEY, instanceToString(index));
-      break;
-
-   case TYPE_LIST:
-      result = list_get(idx, LIST_PTR(object));
-      break;
-
-   case TYPE_STR:
-      char *character = str_char_at(object->str.string, idx);
-      result = createInstance(TYPE_STR, character);
-      break;
+      {
+         throw_error(ERROR_KEY, dataTostring(index));
+         return createData(TYPE_NONE, NULL);
+      }
+      return result;
    }
 
-   freeData(index);
-   freeData(object);
-   return createData(TYPE_INSTANCE, cloneInstance((Data *)result));
+   int i = validateIndex(index, object);
+   int len = seqlen(object);
+
+   if (i >= len || (i < 0 && -i > len))
+   {
+      throw_error(ERROR_INDEX, "Index out of range");
+      return createData(TYPE_NONE, NULL);
+   }
+
+   if (object->type == TYPE_LIST)
+   {
+      List *list = LIST_PTR(object);
+      result = list_get((i < 0 ? len + i : i), list);
+   }
+   else
+   {
+      const char *str = object->str;
+      result = str_char_at(str, (i < 0 ? len + i : i));
+   }
+
+   data_free(index);
+   data_free(object);
+   return createData(object->type, result);
 }
 
-void assignToIndex(Data *obj, Data *index, Data *value)
+static void indexedAssign(Indexed *index, Data *value, Runtime *rt)
 {
+   Data *idx = executeAST(index->value, rt);
+   Data *obj = executeAST(index->object, rt);
+
    if (obj->type == TYPE_DICT)
-   {
-      dict_insert(cloneInstance(index), value, DICT_PTR(obj));
-   }
+      dict_insert(cloneData(index), value, DICT_PTR(obj));
 
    else if (obj->type == TYPE_LIST)
    {
-      int idx = validateIndex(index, obj);
-      void **items = LIST_PTR(obj)->items;
-      if (items[idx])
-         freeData((Data *)items[idx]);
-      items[idx] = value;
+      int i = validateIndex(idx, obj);
+      List *list = LIST_PTR(obj);
+      int len = list->length;
+
+      if (i >= len || (i < 0 && -i > len))
+         throw_error(ERROR_INDEX, "Index out of range");
+
+      list_set(i < 0 ? len + i : i, value, list, data_free);
    }
    else
    {
       throw_error(
-          ERROR_TYPE,
-          "'%s' object does not support item assignment",
+          ERROR_TYPE, "'%s' object does not support item assignment",
           getDataType(obj->type));
    }
 
-   return;
+   data_free(obj);
+   data_free(index);
 }
 
-// New helper function to handle assignment to different target types
+// Helper function to handle assignment to different target types
 static void assignToTarget(ASTnode *target, Data *value, Runtime *rt)
 {
    if (!target || !target->data || !value || !rt)
@@ -350,55 +422,30 @@ static void assignToTarget(ASTnode *target, Data *value, Runtime *rt)
       break;
 
    case TYPE_INDEX:
-   {
       // Indexed assignment: x[i] = value or obj.attr[i] = value
-      Indexed *idx = (Indexed *)targetData->any;
-      Data *obj = executeAST(createASTnode(idx->variable), rt);
-      Data *index = executeAST(idx->value, rt);
-
-      assignToIndex(obj, index, value);
-
-      freeData(obj);
-      freeData(index);
+      indexedAssign((Indexed *)targetData->any, value, rt);
       break;
-   }
 
    case TYPE_ATTRIBUTE:
    {
+      // Attribute assingment: mother.food = value
       Attribute *attr = (Attribute *)targetData->any;
+
       Data *object = executeAST(attr->object, rt);
+      setAttribute(object, attr->attrib, value);
 
-      if (!object)
-      {
-         throw_error(ERROR_SYNTAX, "invalid object in attribute assignment");
-         freeData(value);
-         return;
-      }
-
-      // Extract the attribute name
-      Data *attrName = attr->attrib;
-
-      if (!attrName)
-      {
-         throw_error(ERROR_SYNTAX, "invalid attribute name");
-         freeData(object);
-         freeData(value);
-         return;
-      }
-
-      setAttribute(object, attrName, value);
-      freeData(object);
+      data_free(object);
       break;
    }
 
    default:
       throw_error(ERROR_SYNTAX, "cannot assign to this expression");
-      freeData(value);
+      data_free(value);
       break;
    }
 }
 
-void executeAssignment(Assignment *asmt, Runtime *rt)
+static void executeAssignment(Assignment *asmt, Runtime *rt)
 {
    if (!asmt || !rt)
       return;
@@ -420,14 +467,14 @@ void executeAssignment(Assignment *asmt, Runtime *rt)
       throw_error(ERROR_VALUE,
                   "not enough values to unpack (expected %d, got %d)",
                   vars->length, evaluatedValues->length);
-      freeList(evaluatedValues, TYPE_DATA);
+      list_free(evaluatedValues, data_free);
       return;
    }
    else if (vars->length > evaluatedValues->length)
    {
       throw_error(ERROR_VALUE,
                   "too many values to unpack (expected %d)", vars->length);
-      freeList(evaluatedValues, TYPE_DATA);
+      list_free(evaluatedValues, data_free);
       return;
    }
 
@@ -441,12 +488,12 @@ void executeAssignment(Assignment *asmt, Runtime *rt)
       if (asmt->op)
       {
          Data *currentValue = executeAST(lhs, rt);
-         lhs = createASTexpr(currentValue);
+         lhs = createASTnode(currentValue);
          ASTnode *expr = createASTexpr(asmt->op, lhs, createASTnode(rhs));
 
          Data *newValue = executeAST(expr, rt);
-         freeData(currentValue);
-         freeData(rhs);
+         data_free(currentValue);
+         data_free(rhs);
          rhs = newValue;
       }
 
@@ -455,13 +502,23 @@ void executeAssignment(Assignment *asmt, Runtime *rt)
    }
 
    // Don't free the data, it's been assigned
-   freeList(evaluatedValues, TYPE_NODATA);
+   list_free(evaluatedValues, NULL);
+}
+
+static Status executeException(Exception *exception, void **returns, Runtime *rt)
+{
+   if (!exception || !exception->tried || !exception->catched)
+      return FLOW_NORMAL;
+
+   return handleException(exception, returns, rt);
 }
 
 Status executeStatement(Statement *stmt, void **returns, Runtime *rt)
 {
    if (!stmt)
       return FLOW_NORMAL;
+
+   g_thrown.lineno = stmt->lineno;
 
    switch (stmt->type)
    {
@@ -507,12 +564,15 @@ Status executeStatement(Statement *stmt, void **returns, Runtime *rt)
    case STMT_CONTINUE:
       return FLOW_CONTINUE;
 
+   case STMT_EXCEPTION:
+      return executeException((Exception *)stmt->data, returns, rt);
+
    case STMT_GLOBAL:
-      executeGlobal((VarDecl *)stmt->data, rt);
+      global_exec((char *)stmt->data, rt);
       break;
 
    case STMT_NONLOCAL:
-      executeNonlocal((VarDecl *)stmt->data, rt);
+      nonlocal_exec((char *)stmt->data, rt);
       break;
 
    default:
@@ -522,7 +582,114 @@ Status executeStatement(Statement *stmt, void **returns, Runtime *rt)
    return FLOW_NORMAL;
 }
 
-Status executeBody(List *body, void **returns, Environment *env)
+static Data *executeFunction(Invoked *caller, Runtime *rt)
+{
+   return executeInvoked(caller, rt);
+}
+
+static Data *executeAttribute(Attribute *attr, Runtime *rt)
+{
+   if (!attr || !rt)
+      return NULL;
+
+   Data *object = executeAST(attr->object, rt);
+   Data *attrName = attr->attrib;
+
+   if (!object || !attrName)
+   {
+      data_free(object);
+      data_free(attrName);
+      return NULL;
+   }
+
+   // Handle attribute access based on object type
+   Data *result = getAttribute(object, attrName, rt);
+
+   data_free(object);
+   return result;
+}
+
+static Data *executeSlice(Indexed *index, Runtime *rt)
+{
+   Data *obj = executeAST(index->object, rt);
+   Slice *slice = (Slice *)index->value;
+
+   Data *__s1 = executeAST(slice->start, rt),
+        *__s2 = executeAST(slice->stop, rt),
+        *__s3 = executeAST(slice->step, rt);
+
+   int (*get)(Data *, Data *) = validateIndex;
+
+   if (!obj)
+      return createData(TYPE_NONE, NULL);
+
+   Range *r = createRange(
+       get(__s1, obj), get(__s2, obj), get(__s3, obj));
+
+   void *res = NULL;
+
+   if (obj->type == TYPE_STR)
+      res = str_slice(obj->str, r->start, r->stop, r->step);
+
+   else
+   {
+      List *list = LIST_PTR(obj);
+      res = list_slice(r->start, r->stop, r->step, list);
+   }
+
+   return createData(obj->type, res);
+}
+
+static Data *executeData(Data *leaf, Runtime *rt)
+{
+   void *value = NULL;
+
+   switch (leaf->type)
+   {
+   case TYPE_INVOKED:
+      value = executeFunction((Invoked *)leaf->any, rt);
+      break;
+
+   case TYPE_INSTANCE:
+      value = leaf;
+      break;
+
+   case TYPE_INDEX:
+      value = getFromIndex((Indexed *)leaf->any, rt);
+      break;
+
+   case TYPE_LIST:
+      value = evalListValues(leaf, rt);
+      break;
+
+   case TYPE_ATTRIBUTE:
+      value = executeAttribute((Attribute *)leaf->any, rt);
+      break;
+
+   case TYPE_SET:
+      value = evalSetValues(leaf, rt);
+      break;
+
+   case TYPE_DICT:
+      value = evalDictValues(leaf, rt);
+      break;
+
+   case TYPE_LOOKUP:
+      value = getData(createData(TYPE_STR, leaf->any), rt->env);
+      break;
+
+   case TYPE_SLICE:
+      value = executeSlice((Indexed *)leaf->any, rt);
+      break;
+
+   default:
+      value = cloneData(leaf);
+      break;
+   }
+   return (Data *)value;
+}
+
+Status executeBody(List *body, void **returns, Runtime *rt)
 {
    if (!body)
       return FLOW_NORMAL;
@@ -533,7 +700,7 @@ Status executeBody(List *body, void **returns, Environment *env)
       if (!stmt)
          continue;
 
-      Status status = executeStatement(stmt, returns, env);
+      Status status = executeStatement(stmt, returns, rt);
 
       if (status != FLOW_NORMAL)
          return status;
@@ -542,183 +709,13 @@ Status executeBody(List *body, void **returns, Environment *env)
    return FLOW_NORMAL;
 }
 
-void defineFunction(Function *func, Runtime *rt)
-{
-   if (!func || !rt)
-      return;
-
-   // Capture the current environment (closure)
-   func->env = rt->env;
-
-   if (func->env)
-      func->env->ref++;
-
-   Data *funcData = createInstance(TYPE_FUNCTION, func);
-   if (!funcData)
-      return;
-
-   saveInEnvironment(func->name, funcData, func->env);
-}
-
-Data *executeFunction(Invoked *caller, Runtime *rt)
-{
-   return executeInvoked(caller, rt);
-}
-
-/**
- * Marks a variable as global in the current scope
- */
-void executeGlobal(VarDecl *decl, Runtime *rt)
-{
-   if (!decl || !decl->name || !rt)
-      return;
-
-   Environment *globalEnv = getGlobalEnv(rt);
-   Environment *currentEnv = rt->env;
-
-   // If we're already in global scope, nothing to do
-   if (currentEnv == globalEnv)
-      return;
-
-   // Check if variable is already declared in local scope
-   if (dict_has(decl->name, currentEnv->vars, dataCompare))
-   {
-      throw_error(
-          ERROR_SYNTAX,
-          "name '%s' is assigned to before global declaration",
-          decl->name->str.string);
-      return;
-   }
-
-   // Mark this variable as global in current scope
-   Data *marker = createData(TYPE_INT, &(int){1});
-   saveInEnvironment(decl->name, marker, currentEnv->global_vars);
-
-   // Initialize in global scope if it doesn't exist
-   if (!dict_has(decl->name, globalEnv->vars, dataCompare))
-   {
-      Data *none = createData(TYPE_NONE, NULL);
-      saveInEnvironment(cloneData(decl->name), none, globalEnv);
-   }
-}
-
-void executeNonlocal(VarDecl *decl, Runtime *rt)
-{
-   if (!decl || !decl->name || !rt)
-      return;
-
-   Environment *currentEnv = rt->env;
-
-   // Check if we're in global scope
-   if (currentEnv->parent == NULL)
-   {
-      throw_error(
-          ERROR_SYNTAX,
-          "nonlocal declaration not allowed at module level");
-      return;
-   }
-
-   // Check if variable is already declared in local scope
-   if (dict_has(decl->name, currentEnv->vars, dataCompare))
-   {
-      throw_error(
-          ERROR_SYNTAX,
-          "name '%s' is assigned to before nonlocal declaration",
-          decl->name->str.string);
-      return;
-   }
-
-   // Find the variable in an enclosing scope
-   Environment *enclosingScope = findEnclosingScope(decl->name, rt);
-
-   if (!enclosingScope)
-   {
-      throw_error(
-          ERROR_SYNTAX,
-          "no binding for nonlocal '%s' found",
-          decl->name->str.string);
-      return;
-   }
-
-   Data *marker = createData(TYPE_INT, &(int){1});
-   insert(cloneData(decl->name), marker, currentEnv->nonlocal_vars);
-}
-
-Data *evalAttribute(Attribute *attr, Runtime *rt)
-{
-   if (!attr || !rt)
-      return NULL;
-
-   Data *object = executeAST(attr->object, rt);
-   Data *attrName = attr->attrib;
-
-   if (!object || !attrName)
-   {
-      freeData(object);
-      freeData(attrName);
-      return NULL;
-   }
-
-   // Handle attribute access based on object type
-   Data *result = getAttribute(object, attrName);
-
-   freeData(object);
-   // freeData(attrName);
-   return result;
-}
-
-static Data *executeLeaf(Data *leaf, Runtime *rt)
-{
-   void *value = NULL;
-
-   switch (leaf->type)
-   {
-   case TYPE_LOOKUP:;
-      value = lookUpData((Data *)leaf->any, rt->env);
-      break;
-
-   case TYPE_INVOKED:
-      value = executeFunction((Invoked *)leaf->any, rt);
-      break;
-
-   case TYPE_INDEX:
-      value = getFromIndex((Indexed *)leaf->any, rt);
-      break;
-
-   case TYPE_ATTRIBUTE:
-      value = executeAttribute((Attribute *)leaf->any, rt);
-      break;
-
-   case TYPE_LIST:
-      value = evalListInDepth(leaf, rt, executeAST);
-      break;
-
-   case TYPE_SET:
-      value = evalSetInDepth(leaf, rt, executeAST);
-      break;
-
-   case TYPE_DICT:
-      value = evalDictInDepth(leaf, rt, executeAST);
-      break;
-
-   case TYPE_INSTANCE:
-      value = leaf;
-      break;
-
-   default:
-      value = cloneData(leaf);
-      break;
-   }
-   return (Data *)value;
-}
-
 Data *executeAST(ASTnode *tree, Runtime *rt)
 {
    if (!tree)
       return createData(TYPE_NONE, NULL);
 
    if (!tree->left && !tree->right && tree->data)
-      return executeLeaf(tree->data, rt);
+      return executeData(tree->data, rt);
 
    Data *left = (tree->left) ? executeAST(tree->left, rt) : NULL;
    Data *right = (tree->right) ? executeAST(tree->right, rt) : NULL;
@@ -734,9 +731,9 @@ Data *executeAST(ASTnode *tree, Runtime *rt)
    if (!left || !right)
    {
       if (left)
-         freeData(left);
+         data_free(left);
       if (right)
-         freeData(right);
+         data_free(right);
       throw_error(ERROR_RUNTIME, "insufficient operands");
       return NULL;
    }
@@ -745,8 +742,8 @@ Data *executeAST(ASTnode *tree, Runtime *rt)
    Operator op = *(Operator *)tree->data->any;
    Data *result = handleBinaryOperation(left, right, op);
 
-   freeData(left);
-   freeData(right);
+   data_free(left);
+   data_free(right);
 
    return result;
 }

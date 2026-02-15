@@ -22,6 +22,114 @@
 #include "../lib/format.h"
 #include "methods.h"
 
+// Core builtins
+const BuiltinInfo BUILTIN_REGISTRY[] = {
+    {BUILTIN_PRINT, "print", 0, -1},
+    {BUILTIN_INPUT, "input", 0, 1},
+    {BUILTIN_TYPE, "type", 1, 1},
+    {BUILTIN_INT, "int", 1, 2},
+    {BUILTIN_FLOAT, "float", 1, 1},
+    {BUILTIN_STR, "str", 1, 1},
+    {BUILTIN_BOOL, "bool", 1, 1},
+    {BUILTIN_LIST, "list", 0, 1},
+    {BUILTIN_DICT, "dict", 0, 1},
+    {BUILTIN_SET, "set", 0, 1},
+    {BUILTIN_RANGE, "range", 1, 3},
+    {BUILTIN_LEN, "len", 1, 1},
+    {BUILTIN_ABS, "abs", 1, 1},
+    {BUILTIN_MIN, "min", 1, -1},
+    {BUILTIN_MAX, "max", 1, -1},
+    {BUILTIN_SUM, "sum", 1, 2},
+    {BUILTIN_POW, "pow", 2, 3},
+    {BUILTIN_ROUND, "round", 1, 2},
+    {BUILTIN_SORTED, "sorted", 1, 2},
+    {BUILTIN_REVERSED, "reversed", 1, 1},
+};
+
+// Type-specific method registries
+// List Methods
+const BuiltinInfo LIST_REGISTRY[] = {
+    {LIST_APPEND, "append", 1, 1},
+    {LIST_EXTEND, "extend", 1, 1},
+    {LIST_INSERT, "insert", 2, 2},
+    {LIST_REMOVE, "remove", 1, 1},
+    {LIST_POP, "pop", 0, 1},
+    {LIST_CLEAR, "clear", 0, 0},
+    {LIST_INDEX, "index", 1, 3},
+    {LIST_REVERSE, "reverse", 0, 0},
+    {LIST_COPY, "copy", 0, 0},
+};
+
+// Dict Methods
+const BuiltinInfo DICT_REGISTRY[] = {
+    {DICT_GET, "get", 1, 2},
+    {DICT_KEYS, "keys", 0, 0},
+    {DICT_VALUES, "values", 0, 0},
+    {DICT_ITEMS, "items", 0, 0},
+    {DICT_POP, "pop", 1, 2},
+    {DICT_POPITEM, "popitem", 0, 0},
+    {DICT_CLEAR, "clear", 0, 0},
+    {DICT_UPDATE, "update", 1, 1},
+    {DICT_SETDEFAULT, "setdefault", 1, 2},
+    {DICT_COPY, "copy", 0, 0},
+};
+
+// Set Methods
+const BuiltinInfo SET_REGISTRY[] = {
+    {SET_ADD, "add", 1, 1},
+    {SET_REMOVE, "remove", 1, 1},
+    {SET_DISCARD, "discard", 1, 1},
+    {SET_CLEAR, "clear", 0, 0},
+    {SET_UNION, "union", 1, -1},
+    {SET_INTERSECTION, "intersection", 1, -1},
+    {SET_DIFFERENCE, "difference", 1, -1},
+    {SET_SYMMETRIC_DIFFERENCE, "symmetric_difference", 1, 1},
+    {SET_COPY, "copy", 0, 0},
+    {SET_HAS, "has", 1, 1},
+};
+
+// String Methods
+const BuiltinInfo STR_REGISTRY[] = {
+    {STR_UPPER, "upper", 0, 0},
+    {STR_LOWER, "lower", 0, 0},
+    {STR_CAPITALIZE, "capitalize", 0, 0},
+    {STR_TITLE, "title", 0, 0},
+    {STR_STRIP, "strip", 0, 1},
+    {STR_LSTRIP, "lstrip", 0, 1},
+    {STR_RSTRIP, "rstrip", 0, 1},
+    {STR_REPLACE, "replace", 2, 3},
+    {STR_SPLIT, "split", 0, 2},
+    {STR_JOIN, "join", 1, 1},
+    {STR_STARTSWITH, "startswith", 1, 3},
+    {STR_ENDSWITH, "endswith", 1, 3},
+    {STR_FIND, "find", 1, 3},
+    {STR_INDEX, "index", 1, 3},
+    {STR_ISALPHA, "isalpha", 0, 0},
+    {STR_ISDIGIT, "isdigit", 0, 0},
+    {STR_ISALNUM, "isalnum", 0, 0},
+    {STR_ISSPACE, "isspace", 0, 0},
+    {STR_ISUPPER, "isupper", 0, 0},
+    {STR_ISLOWER, "islower", 0, 0},
+};
+
+// Int/Bool Methods
+const BuiltinInfo INT_REGISTRY[] = {
+    {NUM_BIT_LENGTH, "bit_length", 0, 0},
+    {NUM_BIT_COUNT, "bit_count", 0, 0},
+};
+
+// Float Methods
+const BuiltinInfo FLOAT_REGISTRY[] = {
+    {NUM_IS_INTEGER, "is_integer", 0, 0},
+    {NUM_HEX, "hex", 0, 0},
+};
+
+// Range Methods
+const BuiltinInfo RANGE_REGISTRY[] = {
+    {RANGE_COUNT_METHOD, "count", 1, 1},
+    {RANGE_INDEX, "index", 1, 1},
+};
+
 //=========================================================
 //  Argument Extraction Helpers
 //=========================================================
@@ -36,28 +144,27 @@ static inline Data *arg_data(List *args, int i)
 static inline int arg_int(List *args, int i, int def)
 {
    Data *d = arg_data(args, i);
-   return (d && d->type == TYPE_INT && d->integer.atom) ? *(int *)d->integer.atom : def;
+   return (d && d->type == TYPE_INT && d->atom) ? *(int *)d->atom : def;
 }
 
 static inline const char *arg_str(List *args, int i, const char *def)
 {
    Data *d = arg_data(args, i);
-   return (d && d->type == TYPE_STR && d->str.string) ? d->str.string : def;
+   return (d && d->type == TYPE_STR && d->str) ? d->str : def;
 }
 
 //=========================================================
 //  HELPER: Initialize Single Registry into Dict
 //=========================================================
 
-void initializeRegistry(const BuiltinInfo *registry, Dict *dict)
+void initializeRegistry(Dict *dict, const BuiltinInfo *registry)
 {
    if (!dict || !registry)
       return;
 
-   size_t len = sizeof(registry) / sizeof(BuiltinInfo);
    size_t i = 0;
 
-   while (i < len)
+   while (registry[i].name != NULL)
    {
       char *name = strdup(registry[i].name);
       void *method = (void *)&registry[i];
@@ -72,9 +179,9 @@ void initializeRegistry(const BuiltinInfo *registry, Dict *dict)
       else
       {
          if (key)
-            freeData(key);
+            data_free(key);
          if (val)
-            freeData(val);
+            data_free(val);
       }
       ++i;
    }
@@ -107,7 +214,7 @@ void initializeBuiltins(Runtime *rt)
    initializeRegistry(methods->set, SET_REGISTRY);
 
    // Initialize string methods
-   initializeRegistry(methods->string, STR_REGISTRY);
+   initializeRegistry(methods->str, STR_REGISTRY);
 
    // Initialize int/bool methods
    initializeRegistry(methods->atom, INT_REGISTRY);
@@ -117,158 +224,9 @@ void initializeBuiltins(Runtime *rt)
 
    // Initialize range methods
    initializeRegistry(methods->range, RANGE_REGISTRY);
-}
 
-//=========================================================
-//  RUNTIME CREATION WITH INITIALIZATION
-//=========================================================
-
-Runtime *createRuntime(void)
-{
-   Runtime *rt = (Runtime *)malloc(sizeof(Runtime));
-   if (!rt)
-      return NULL;
-
-   // Create global environment
-   rt->env = env_create(NULL);
-   if (!rt->env)
-   {
-      free(rt);
-      return NULL;
-   }
-
-   // Allocate methods structure
-   rt->methods = (Builtin *)malloc(sizeof(Builtin));
-   if (!rt->methods)
-   {
-      env_free(rt->env);
-      free(rt);
-      return NULL;
-   }
-
-   // Create all method dictionaries with appropriate sizes
-   rt->methods->builtins = createDict(BUILTIN_COUNT);
-   rt->methods->lists = createDict(LIST_COUNT);
-   rt->methods->dicts = createDict(DICT_COUNT);
-   rt->methods->sets = createDict(SET_COUNT);
-   rt->methods->strings = createDict(STR_COUNT);
-   rt->methods->atoms = createDict(INT_COUNT);
-   rt->methods->reals = createDict(FLOAT_COUNT);
-   rt->methods->ranges = createDict(RANGE_COUNT);
-   rt->methods->none = createDict(1); // Placeholder
-
-   // Check if all dictionaries were created successfully
-   if (!rt->methods->builtins || !rt->methods->lists ||
-       !rt->methods->dicts || !rt->methods->sets ||
-       !rt->methods->strings || !rt->methods->atoms ||
-       !rt->methods->reals || !rt->methods->ranges)
-   {
-      fprintf(stderr, "Error: Failed to create method dictionaries\n");
-      freeRuntime(rt);
-      return NULL;
-   }
-
-   // Initialize modules
-   rt->modules = NULL;
-
-   // **THIS IS WHERE ALL METHODS GET INITIALIZED**
-   initializeAllMethods(rt);
-
-   return rt;
-}
-
-//=========================================================
-//  CLEANUP
-//=========================================================
-
-void freeRuntime(Runtime *rt)
-{
-   if (!rt)
-      return;
-
-   if (rt->env)
-      env_free(rt->env);
-
-   if (rt->methods)
-   {
-      if (rt->methods->builtins)
-         freeDict(rt->methods->builtins);
-      if (rt->methods->lists)
-         freeDict(rt->methods->lists);
-      if (rt->methods->dicts)
-         freeDict(rt->methods->dicts);
-      if (rt->methods->sets)
-         freeDict(rt->methods->sets);
-      if (rt->methods->strings)
-         freeDict(rt->methods->strings);
-      if (rt->methods->atoms)
-         freeDict(rt->methods->atoms);
-      if (rt->methods->reals)
-         freeDict(rt->methods->reals);
-      if (rt->methods->ranges)
-         freeDict(rt->methods->ranges);
-      if (rt->methods->none)
-         freeDict(rt->methods->none);
-
-      free(rt->methods);
-   }
-
-   if (rt->modules)
-      freeDict(rt->modules);
-
-   free(rt);
-}
-
-//=========================================================
-//  METHOD LOOKUP FUNCTION
-//=========================================================
-
-Data *getBuiltinMethod(DataType type, Data *methodName, Runtime *rt)
-{
-   if (!methodName || methodName->type != TYPE_STR || !rt || !rt->methods)
-      return NULL;
-
-   Dict *methodDict = NULL;
-
-   // Select the appropriate method dictionary based on type
-   switch (type)
-   {
-   case TYPE_LIST:
-      methodDict = rt->methods->lists;
-      break;
-   case TYPE_DICT:
-      methodDict = rt->methods->dicts;
-      break;
-   case TYPE_SET:
-      methodDict = rt->methods->sets;
-      break;
-   case TYPE_STR:
-      methodDict = rt->methods->strings;
-      break;
-   case TYPE_INT:
-   case TYPE_BOOL:
-      methodDict = rt->methods->atoms;
-      break;
-   case TYPE_FLOAT:
-      methodDict = rt->methods->reals;
-      break;
-   case TYPE_RANGE:
-      methodDict = rt->methods->ranges;
-      break;
-   default:
-      return NULL;
-   }
-
-   if (!methodDict)
-      return NULL;
-
-   // Look up the method in the dictionary
-   Data *method = dict_get(methodName, methodDict, dataCompare);
-
-   if (method)
-      return cloneData(method);
-
-   return NULL;
+   // Initialize error classes
+   initializeErrorClass(rt);
 }
 
 //=========================================================
@@ -280,7 +238,7 @@ Data *dispatchBuiltin(BuiltinType type, List *args, Dict *kwargs, Runtime *rt)
    UNUSED(rt);
 
    if (!args)
-      args = createList(PARSE_SIZE);
+      args = list_create(__size__);
 
    switch (type)
    {
@@ -308,8 +266,6 @@ Data *dispatchBuiltin(BuiltinType type, List *args, Dict *kwargs, Runtime *rt)
       return builtin_len(ARG(0));
    case BUILTIN_SORTED:
       return builtin_sorted(ARG(0));
-   case BUILTIN_REVERSED:
-      return builtin_reversed(ARG(0));
    case BUILTIN_ABS:
       return builtin_abs(ARG(0));
    case BUILTIN_POW:
@@ -383,7 +339,7 @@ Data *dispatchListMethod(BuiltinType type, Data *object, List *args, Dict *kwarg
    case LIST_REMOVE:
    {
       void *value = ARG(0);
-      if (list_remove(value, list, freeData) == LIST_ERROR)
+      if (list_remove(value, list, data_free) == LIST_ERROR)
       {
          throw_error(
              ERROR_VALUE, "%s not in list",
@@ -408,19 +364,19 @@ Data *dispatchListMethod(BuiltinType type, Data *object, List *args, Dict *kwarg
             throw_error(ERROR_INDEX, "pop index out of range");
             return createData(TYPE_NONE, NULL);
          }
-         list_remove(value, list, freeData);
+         list_remove(value, list, data_free);
          return (Data *)value;
       }
    }
 
    case LIST_CLEAR:
-      list_clear(list);
+      list_clear(list, data_free);
       return createData(TYPE_NONE, NULL);
 
    case LIST_INDEX:
    {
       void *value = ARG(0);
-      int idx = list_index(value, list, dataCompare);
+      int idx = list_index(value, list);
       if (idx == -1)
       {
          throw_error(ERROR_VALUE, "%s not in list",
@@ -460,7 +416,7 @@ Data *dispatchDictMethod(BuiltinType type, Data *object, List *args, Dict *kwarg
    {
       void *key = ARG(0);
       void *default_val = ARG(1);
-      void *result = dict_get(key, dict, dataCompare);
+      void *result = dict_get(key, dict);
       if (result)
          return (Data *)result;
       return default_val ? (Data *)default_val : createData(TYPE_NONE, NULL);
@@ -468,26 +424,29 @@ Data *dispatchDictMethod(BuiltinType type, Data *object, List *args, Dict *kwarg
 
    case DICT_KEYS:
    {
-      void *keys = dict_keys(dict);
-      return keys ? (Data *)keys : createData(TYPE_LIST, createList(0));
+      List *keys = list_create(dict->capacity);
+      dict_keys(dict, keys->items);
+      return createData(TYPE_LIST, keys);
    }
 
    case DICT_VALUES:
    {
-      void *values = dict_values(dict);
-      return values ? (Data *)values : createData(TYPE_LIST, createList(0));
+      List *values = list_create(dict->capacity);
+      dict_values(dict, values->items);
+      return createData(TYPE_LIST, values);
    }
 
    case DICT_ITEMS:
    {
-      void *items = dict_items(dict);
-      return items ? (Data *)items : createData(TYPE_LIST, createList(0));
+      List *items = list_create(dict->capacity);
+      dict_items(dict, items->items);
+      return createData(TYPE_LIST, items);
    }
 
    case DICT_POP:
    {
       void *key = ARG(0);
-      void *result = dict_pop(key, dict, dataCompare);
+      void *result = dict_pop(key, dict);
       if (result)
          return (Data *)result;
 
@@ -514,12 +473,13 @@ Data *dispatchDictMethod(BuiltinType type, Data *object, List *args, Dict *kwarg
    case DICT_SETDEFAULT:
    {
       void *val = ARG(1) ? ARG(1) : createData(TYPE_NONE, NULL);
-      return createData(TYPE_INT, &(int){dict_setdefault(ARG(0), val, dict)});
+      int def = dict_setdefault(ARG(0), val, dict);
+      return createData(TYPE_INT, &def);
    }
 
    case DICT_COPY:
    {
-      Dict *copy = dict_clone(dict, cloneData);
+      Dict *copy = dict_clone(dict);
       return createData(TYPE_DICT, copy);
    }
 
@@ -539,23 +499,21 @@ Data *dispatchSetMethod(BuiltinType type, Data *object, List *args, Dict *kwargs
    UNUSED(rt);
 
    Set *set = SET_PTR(object);
-   Compare cmp = dataCompare;
-   Clone cln = cloneData;
 
    switch (type)
    {
    case SET_ADD:
-      set_add(ARG(0), set, dataCompare);
+      set_add(ARG(0), set);
       return createData(TYPE_NONE, NULL);
 
    case SET_REMOVE:
    {
-      set_remove(ARG(0), set, dataCompare);
+      set_remove(ARG(0), set);
       return createData(TYPE_NONE, NULL);
    }
 
    case SET_DISCARD:
-      set_remove(ARG(0), set, dataCompare);
+      set_remove(ARG(0), set);
       return createData(TYPE_NONE, NULL);
 
    case SET_CLEAR:
@@ -570,7 +528,7 @@ Data *dispatchSetMethod(BuiltinType type, Data *object, List *args, Dict *kwargs
          throw_error(ERROR_TYPE, "union() argument must be a set");
          return createData(TYPE_NONE, NULL);
       }
-      Set *result = set_union(set, SET_PTR(other), cmp, cln);
+      Set *result = set_union(set, SET_PTR(other));
       return createData(TYPE_SET, result);
    }
 
@@ -582,7 +540,7 @@ Data *dispatchSetMethod(BuiltinType type, Data *object, List *args, Dict *kwargs
          throw_error(ERROR_TYPE, "intersection() argument must be a set");
          return createData(TYPE_NONE, NULL);
       }
-      Set *result = set_intersection(set, SET_PTR(other), cmp, cln);
+      Set *result = set_intersection(set, SET_PTR(other));
       return createData(TYPE_SET, result);
    }
 
@@ -594,7 +552,7 @@ Data *dispatchSetMethod(BuiltinType type, Data *object, List *args, Dict *kwargs
          throw_error(ERROR_TYPE, "difference() argument must be a set");
          return createData(TYPE_NONE, NULL);
       }
-      Set *result = set_difference(set, SET_PTR(other), cmp, cln);
+      Set *result = set_difference(set, SET_PTR(other));
       return createData(TYPE_SET, result);
    }
 
@@ -606,20 +564,20 @@ Data *dispatchSetMethod(BuiltinType type, Data *object, List *args, Dict *kwargs
          throw_error(ERROR_TYPE, "symmetric_difference() argument must be a set");
          return createData(TYPE_NONE, NULL);
       }
-      Set *result = set_symdiff(set, SET_PTR(other), cmp, cln);
+      Set *result = set_symdiff(set, SET_PTR(other));
       return createData(TYPE_SET, result);
    }
 
    case SET_COPY:
    {
-      Set *copy = set_clone(set, dataCompare, cloneData);
+      Set *copy = set_clone(set);
       return createData(TYPE_SET, copy);
    }
 
    case SET_HAS:
    {
       void *value = ARG(0);
-      int has = set_has(value, set, dataCompare);
+      int has = set_has(value, set);
       return createData(TYPE_BOOL, (void *)(long)has);
    }
 
@@ -644,7 +602,7 @@ Data *dispatchStrMethod(BuiltinType type, Data *object, List *args, Dict *kwargs
       return createData(TYPE_NONE, NULL);
    }
 
-   char *str = object->str.string;
+   const char *str = object->str;
 
    switch (type)
    {
@@ -692,8 +650,8 @@ Data *dispatchStrMethod(BuiltinType type, Data *object, List *args, Dict *kwargs
 
    case STR_REPLACE:
    {
-      char *old_str = ARG_STR(0, "");
-      char *new_str = ARG_STR(1, "");
+      const char *old_str = ARG_STR(0, "");
+      const char *new_str = ARG_STR(1, "");
       char *result = str_replace_all(str, old_str, new_str);
       return createData(TYPE_STR, result);
    }
@@ -702,7 +660,7 @@ Data *dispatchStrMethod(BuiltinType type, Data *object, List *args, Dict *kwargs
    {
       // TODO: Implement str_split function
       // For now, return empty list
-      return createData(TYPE_LIST, createList(0));
+      return createData(TYPE_LIST, list_create(0));
    }
 
    case STR_JOIN:
@@ -725,7 +683,7 @@ Data *dispatchStrMethod(BuiltinType type, Data *object, List *args, Dict *kwargs
       {
          Data *item = (Data *)list->items[i];
          if (item->type == TYPE_STR)
-            total_len += strlen(STR_PTR(item));
+            total_len += strlen(item->str);
       }
       total_len += sep_len * (list->length - 1);
 
@@ -738,7 +696,7 @@ Data *dispatchStrMethod(BuiltinType type, Data *object, List *args, Dict *kwargs
          Data *item = (Data *)list->items[i];
          if (item->type == TYPE_STR)
          {
-            strcat(result, STR_PTR(item));
+            strcat(result, item->str);
             if (i < list->length - 1)
                strcat(result, str);
          }
@@ -749,53 +707,53 @@ Data *dispatchStrMethod(BuiltinType type, Data *object, List *args, Dict *kwargs
 
    case STR_STARTSWITH:
    {
-      char *prefix = ARG_STR(0, "");
+      const char *prefix = ARG_STR(0, "");
       int result = str_starts_with(str, prefix);
-      return createData(TYPE_BOOL, (void *)(long)result);
+      return createData(TYPE_BOOL, &result);
    }
 
    case STR_ENDSWITH:
    {
-      char *suffix = ARG_STR(0, "");
+      const char *suffix = ARG_STR(0, "");
       int result = str_ends_with(str, suffix);
-      return createData(TYPE_BOOL, (void *)(long)result);
+      return createData(TYPE_BOOL, &result);
    }
 
    case STR_FIND:
    {
-      char *substr = ARG_STR(0, "");
+      const char *substr = ARG_STR(0, "");
       int result = str_index_of(str, substr);
-      return createData(TYPE_INT, (void *)(long)result);
+      return createData(TYPE_INT, &result);
    }
 
    case STR_INDEX:
    {
-      char *substr = ARG_STR(0, "");
+      const char *substr = ARG_STR(0, "");
       int result = str_index_of(str, substr);
       if (result == -1)
       {
          throw_error(ERROR_VALUE, "substring not found");
          return createData(TYPE_NONE, NULL);
       }
-      return createData(TYPE_INT, (void *)(long)result);
+      return createData(TYPE_INT, &result);
    }
 
    case STR_ISALPHA:
    {
       int result = str_is_alpha(str);
-      return createData(TYPE_BOOL, (void *)(long)result);
+      return createData(TYPE_BOOL, &result);
    }
 
    case STR_ISDIGIT:
    {
       int result = str_is_digit(str);
-      return createData(TYPE_BOOL, (void *)(long)result);
+      return createData(TYPE_BOOL, &result);
    }
 
    case STR_ISALNUM:
    {
       int result = str_is_alpha_numeric(str);
-      return createData(TYPE_BOOL, (void *)(long)result);
+      return createData(TYPE_BOOL, &result);
    }
 
    case STR_ISSPACE:
@@ -807,13 +765,13 @@ Data *dispatchStrMethod(BuiltinType type, Data *object, List *args, Dict *kwargs
    case STR_ISUPPER:
    {
       int result = str_is_upper(str);
-      return createData(TYPE_BOOL, (void *)(long)result);
+      return createData(TYPE_BOOL, &result);
    }
 
    case STR_ISLOWER:
    {
       int result = str_is_lower(str);
-      return createData(TYPE_BOOL, (void *)(long)result);
+      return createData(TYPE_BOOL, &result);
    }
 
    default:
@@ -832,12 +790,12 @@ Data *dispatchNumMethod(BuiltinType type, Data *object, List *args, Dict *kwargs
    {
    case NUM_BIT_LENGTH:
    {
-      if (object->type != TYPE_INT && object != TYPE_BOOL)
+      if (object->type != TYPE_INT && object->type != TYPE_BOOL)
       {
          throw_error(ERROR_TYPE, "bit_length() requires int");
          return createData(TYPE_NONE, NULL);
       }
-      long val = (long)*(int *)object->integer.atom;
+      long val = (long)*(int *)object->atom;
       if (val < 0)
          val = -val;
 
@@ -852,12 +810,12 @@ Data *dispatchNumMethod(BuiltinType type, Data *object, List *args, Dict *kwargs
 
    case NUM_BIT_COUNT:
    {
-      if (object->type != TYPE_INT && object != TYPE_BOOL)
+      if (object->type != TYPE_INT && object->type != TYPE_BOOL)
       {
          throw_error(ERROR_TYPE, "bit_count() requires int");
          return createData(TYPE_NONE, NULL);
       }
-      long val = (long)*(int *)object->integer.atom;
+      long val = (long)*(int *)object->atom;
       if (val < 0)
          val = -val;
 
@@ -878,7 +836,7 @@ Data *dispatchNumMethod(BuiltinType type, Data *object, List *args, Dict *kwargs
          throw_error(ERROR_TYPE, "is_integer() requires float");
          return createData(TYPE_NONE, NULL);
       }
-      double val = *(double *)object->decimal.real;
+      double val = *(double *)object->real;
       int result = (val == floor(val));
       return createData(TYPE_BOOL, (void *)(long)result);
    }
@@ -892,7 +850,7 @@ Data *dispatchNumMethod(BuiltinType type, Data *object, List *args, Dict *kwargs
       }
       // Convert float to hex representation
       char buffer[32];
-      double val = *(double *)object->decimal.real;
+      double val = *(double *)object->real;
       snprintf(buffer, sizeof(buffer), "%a", val);
       return createData(TYPE_STR, strdup(buffer));
    }
@@ -918,18 +876,18 @@ Data *dispatchRangeMethod(BuiltinType type, Data *object, List *args, Dict *kwar
       return createData(TYPE_NONE, NULL);
    }
 
-   Range *range = RANGE_PTR(object);
+   Range *range = object->range;
 
    switch (type)
    {
    case RANGE_START:
-      return createData(TYPE_INT, (void *)range->start);
+      return createData(TYPE_INT, &(int){range->start});
 
    case RANGE_STOP:
-      return createData(TYPE_INT, (void *)range->stop);
+      return createData(TYPE_INT, &(int){range->stop});
 
    case RANGE_STEP:
-      return createData(TYPE_INT, (void *)range->step);
+      return createData(TYPE_INT, &(int){range->step});
 
    case RANGE_COUNT_METHOD:
    {
@@ -941,7 +899,7 @@ Data *dispatchRangeMethod(BuiltinType type, Data *object, List *args, Dict *kwar
          return createData(TYPE_NONE, NULL);
       }
 
-      long search_val = (long)*(int *)value->integer.atom;
+      long search_val = (long)*(int *)value->atom;
       int count = 0;
 
       if ((search_val - range->start) % range->step == 0)
@@ -960,7 +918,7 @@ Data *dispatchRangeMethod(BuiltinType type, Data *object, List *args, Dict *kwar
          return createData(TYPE_NONE, NULL);
       }
 
-      long search_val = (long)*(int *)value->integer.atom;
+      long search_val = (long)*(int *)value->atom;
 
       // Check if value is in range and find its index
       if (range->step > 0)
@@ -1012,27 +970,61 @@ Data *dispatchNoneMethod(BuiltinType type, Data *object, List *args, Dict *kwarg
    return createData(TYPE_NONE, NULL);
 }
 
-Data *dispatchMethod(DataType obj_type, BuiltinType method_type, Data *object,
-                     List *args, Dict *kwargs, Runtime *rt)
+static const BuiltinInfo *handleBuiltin(Data *object, Data *method, List *args)
 {
-   switch (obj_type)
+   if (!method || !object)
+      return NULL;
+
+   const BuiltinInfo *info = (const BuiltinInfo *)method->any;
+
+   if (!info)
+      return NULL;
+
+   int arglen = args ? args->length : 0;
+   if (arglen < info->min_args)
    {
-   case TYPE_LIST:
-      return dispatchListMethod(method_type, object, args, kwargs, rt);
-   case TYPE_DICT:
-      return dispatchDictMethod(method_type, object, args, kwargs, rt);
-   case TYPE_SET:
-      return dispatchSetMethod(method_type, object, args, kwargs, rt);
-   case TYPE_STR:
-      return dispatchStrMethod(method_type, object, args, kwargs, rt);
+      throw_error(
+          ERROR_TYPE, "%s.%s() takes at least %d argument(s), %d given",
+          getDataType(object->type), info->name, info->min_args, arglen);
+      return NULL;
+   }
+
+   if (info->max_args != -1 && arglen > info->max_args)
+   {
+      throw_error(
+          ERROR_TYPE, "%s.%s() takes at most %d argument(s), %d given",
+          getDataType(object->type), info->name, info->max_args, arglen);
+      return NULL;
+   }
+
+   return (const BuiltinInfo *)info;
+}
+
+Data *dispatchMethod(Data *object, Data *method, List *args, Dict *kwargs, Runtime *rt)
+{
+   const BuiltinInfo *info = handleBuiltin(object, method, args);
+
+   if (!info)
+      return createData(TYPE_NONE, NULL);
+
+   switch (object->type)
+   {
    case TYPE_INT:
    case TYPE_BOOL:
    case TYPE_FLOAT:
-      return dispatchNumMethod(method_type, object, args, kwargs, rt);
+      return dispatchNumMethod(info->type, object, args, kwargs, rt);
+   case TYPE_LIST:
+      return dispatchListMethod(info->type, object, args, kwargs, rt);
+   case TYPE_DICT:
+      return dispatchDictMethod(info->type, object, args, kwargs, rt);
+   case TYPE_SET:
+      return dispatchSetMethod(info->type, object, args, kwargs, rt);
+   case TYPE_STR:
+      return dispatchStrMethod(info->type, object, args, kwargs, rt);
    case TYPE_RANGE:
-      return dispatchRangeMethod(method_type, object, args, kwargs, rt);
+      return dispatchRangeMethod(info->type, object, args, kwargs, rt);
    case TYPE_NONE:
-      return dispatchNoneMethod(method_type, object, args, kwargs, rt);
+      return dispatchNoneMethod(info->type, object, args, kwargs, rt);
    default:
       throw_error(ERROR_TYPE, "unsupported type for method dispatch");
       return createData(TYPE_NONE, NULL);

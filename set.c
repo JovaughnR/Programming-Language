@@ -2,8 +2,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include "./lib/set.h"
-#include "daloc.h" // Add this include for freeData
-#include "maloc.h"
+
+extern unsigned long hash(void *key);
+extern int datacmp(const void *d1, const void *d2);
+extern void *cloneData(const void *d);
+extern void data_free(const void *data);
 
 Set *set_create()
 {
@@ -11,8 +14,8 @@ Set *set_create()
    set->capacity = 0;
 
    // Allocate memory for the hash table (bucket array).
-   set->bucket = (void **)calloc(256, sizeof(void *));
-   set->size = 256;
+   set->bucket = (void **)calloc(8, sizeof(void *));
+   set->size = 8;
    return set;
 }
 
@@ -50,7 +53,7 @@ static void set_resize(Set *set, int new_size)
    set->size = new_size;
 }
 
-void set_add(void *value, Set *set, Compare cmp)
+void set_add(void *value, Set *set)
 {
    if (!set)
       return;
@@ -65,7 +68,7 @@ void set_add(void *value, Set *set, Compare cmp)
    {
       // already exists
       if (set->bucket[idx] != TOMBSTONE &&
-          cmp(value, set->bucket[idx]))
+          datacmp(value, set->bucket[idx]))
          return;
 
       idx = (idx + 1) % set->size;
@@ -83,7 +86,7 @@ void set_add(void *value, Set *set, Compare cmp)
  * - value: The value to remove.
  * - set: The Set from which the value will be removed.
  */
-void set_remove(void *value, Set *set, Compare cmp)
+void set_remove(void *value, Set *set)
 {
    unsigned long h = hash(value);
    int idx = h % set->size;
@@ -92,7 +95,7 @@ void set_remove(void *value, Set *set, Compare cmp)
    while (set->bucket[idx])
    {
       if (set->bucket[idx] != TOMBSTONE &&
-          cmp(value, set->bucket[idx]))
+          datacmp(value, set->bucket[idx]))
       {
          set->bucket[idx] = TOMBSTONE;
          set->capacity--;
@@ -107,72 +110,72 @@ void set_remove(void *value, Set *set, Compare cmp)
    fprintf(stderr, "KeyError: element not found in set\n");
 }
 
-Set *set_union(Set *A, Set *B, Compare cmp, Clone clone)
+Set *set_union(Set *A, Set *B)
 {
    Set *res = set_create();
 
    for (int i = 0; i < A->size; i++)
       if (A->bucket[i] && A->bucket[i] != TOMBSTONE)
-         set_add(clone(A->bucket[i]), res, cmp);
+         set_add(cloneData(A->bucket[i]), res);
 
    for (int i = 0; i < B->size; i++)
       if (B->bucket[i] && B->bucket[i] != TOMBSTONE)
-         set_add(clone(B->bucket[i]), res, cmp);
+         set_add(cloneData(B->bucket[i]), res);
 
    return res;
 }
 
-Set *set_intersection(Set *A, Set *B, Compare cmp, Clone clone)
+Set *set_intersection(Set *A, Set *B)
 {
-   Set *res = createSet();
+   Set *res = set_create();
 
    for (int i = 0; i < A->size; i++)
       if (A->bucket[i] && A->bucket[i] != TOMBSTONE)
-         if (set_has(A->bucket[i], B, cmp))
-            set_add(clone(A->bucket[i]), res, cmp);
+         if (set_has(A->bucket[i], B))
+            set_add(cloneData(A->bucket[i]), res);
 
    return res;
 }
 
-Set *set_difference(Set *A, Set *B, Compare cmp, Clone clone)
+Set *set_difference(Set *A, Set *B)
 {
-   Set *res = createSet();
+   Set *res = set_create();
 
    for (int i = 0; i < A->size; i++)
       if (A->bucket[i] && A->bucket[i] != TOMBSTONE)
-         if (!set_has(A->bucket[i], B, cmp))
-            set_add(clone(A->bucket[i]), res, cmp); // Fixed argument order
+         if (!set_has(A->bucket[i], B))
+            set_add(cloneData(A->bucket[i]), res); // Fixed argument order
 
    return res;
 }
 
-Set *set_symdiff(Set *A, Set *B, Compare cmp, Clone clone)
+Set *set_symdiff(Set *A, Set *B)
 {
-   Set *res = createSet();
+   Set *res = set_create();
 
    // A - B
    for (int i = 0; i < A->size; i++)
       if (A->bucket[i] && A->bucket[i] != TOMBSTONE)
-         if (!set_has(A->bucket[i], B, cmp))
-            set_add(clone(A->bucket[i]), res, cmp); // Fixed argument order
+         if (!set_has(A->bucket[i], B))
+            set_add(cloneData(A->bucket[i]), res); // Fixed argument order
 
    // B - A
    for (int i = 0; i < B->size; i++)
       if (B->bucket[i] && B->bucket[i] != TOMBSTONE)
-         if (!set_has(B->bucket[i], A, cmp))
-            set_add(clone(B->bucket[i]), res, cmp); // Fixed argument order
+         if (!set_has(B->bucket[i], A))
+            set_add(cloneData(B->bucket[i]), res); // Fixed argument order
 
    return res;
 }
 
-int sets_equal(Set *a, Set *b, Compare cmp)
+int set_equal(Set *a, Set *b)
 {
    if (a->capacity != b->capacity)
       return 0;
 
    for (int i = 0; i < a->size; i++)
    {
-      if (!cmp(a->bucket[i], b->bucket[i]))
+      if (!datacmp(a->bucket[i], b->bucket[i]))
          return 0;
    }
 
@@ -192,14 +195,14 @@ void set_clear(Set *set)
    {
       void *val = set->bucket[i];
       if (val && val != TOMBSTONE)
-         freeData(set->bucket[i]);
+         data_free(set->bucket[i]);
 
       set->bucket[i] = NULL; // Clear the slot.
    }
    set->capacity = 0;
 }
 
-int set_has(void *value, Set *set, Compare cmp)
+int set_has(void *value, Set *set)
 {
    unsigned long h = hash(value);
    int idx = h % set->size;
@@ -208,7 +211,7 @@ int set_has(void *value, Set *set, Compare cmp)
    while (set->bucket[idx])
    {
       if (set->bucket[idx] != TOMBSTONE &&
-          cmp(value, set->bucket[idx]))
+          datacmp(value, set->bucket[idx]))
          return 1;
 
       idx = (idx + 1) % set->size;
@@ -223,12 +226,12 @@ int set_len(Set *set)
    return set->capacity;
 }
 
-Set *set_clone(Set *original, Compare cmp, Clone clone)
+Set *set_clone(Set *original)
 {
    if (!original)
       return NULL;
 
-   Set *copy = createSet();
+   Set *copy = set_create();
    if (!copy)
       return NULL;
 
@@ -236,13 +239,13 @@ Set *set_clone(Set *original, Compare cmp, Clone clone)
    {
       Data *value = original->bucket[i];
       if (value && value != TOMBSTONE)
-         set_add(clone(value), copy, cmp);
+         set_add(cloneData(value), copy);
    }
 
    return copy;
 }
 
-void set_free(Set *set, void (*freeItem)(void *))
+void set_free(Set *set)
 {
    if (!set)
       return;
@@ -253,7 +256,7 @@ void set_free(Set *set, void (*freeItem)(void *))
       void *elem = set->bucket[i];
       if (elem && elem != TOMBSTONE)
       {
-         freeItem(elem);
+         data_free(elem);
          set->bucket[i] = NULL; // Prevent double-free
       }
    }
@@ -272,7 +275,7 @@ void set_free(Set *set, void (*freeItem)(void *))
 
 // int main(void)
 // {
-//    Set *set = createSet();
+//    Set *set = set_create();
 //    int x = 9;
 //    double y = 9.01;
 //    int true = 1;

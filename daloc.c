@@ -1,30 +1,56 @@
 #include <stdlib.h>
+
 #include "./lib/dict.h"
 #include "./lib/type.h"
 #include "./lib/daloc.h"
 #include "./lib/list.h"
 #include "./lib/set.h"
+#include "./lib/error.h"
 
-static void pair_free(Pair *pair)
+// Function Prototypes
+void data_free(const void *data);
+
+void pair_free(const void *pair)
 {
    if (!pair)
       return;
 
-   data_free((Data *)pair->key);
-   data_free((Data *)pair->value);
+   Pair *p = (Pair *)pair;
 
-   Pair *p = pair->next;
-   while (p)
-   {
-      Pair *temp = p;
-      p = p->next;
+   data_free((Data *)p->key);
+   data_free((Data *)p->value);
 
-      data_free(temp->key);
-      data_free(temp->value);
-      free(temp);
-   }
+   free(p);
+}
 
-   free(pair);
+void ast_free(const void *ast)
+{
+   if (!ast)
+      return;
+
+   ASTnode *node = (ASTnode *)ast;
+
+   ast_free(node->left);
+   ast_free(node->right);
+   data_free(node->data);
+
+   free(node);
+}
+
+static void params_free(const void *params)
+{
+   if (!params)
+      return;
+
+   ParamInfo *param = (ParamInfo *)params;
+
+   if (param->name)
+      free(param->name);
+
+   if (param->defaultValue)
+      ast_free(param->defaultValue);
+
+   free(param);
 }
 
 static void function_free(Function *func)
@@ -51,8 +77,71 @@ static void instance_free(Instance *inst)
 
    // Don't free the class
    inst->class = NULL; // Set the reference to NULL
-   dict_free(inst->attributes, pair_free);
+   dict_free(inst->attributes);
    free(inst);
+}
+
+void env_free(Environment *env)
+{
+   if (!env)
+      return;
+
+   env->ref--;
+
+   if (env->ref > 0)
+      return;
+
+   dict_free(env->vars);
+   dict_free(env->global_vars);
+   dict_free(env->nonlocal_vars);
+
+   if (env->parent)
+      env_free(env->parent);
+
+   free(env);
+}
+
+static void methods_free(Method *methods)
+{
+   if (!methods)
+      return;
+
+   dict_free(methods->builtin);
+
+   dict_free(methods->set);
+
+   dict_free(methods->list);
+
+   dict_free(methods->atom);
+
+   dict_free(methods->real);
+
+   dict_free(methods->dict);
+
+   dict_free(methods->str);
+
+   dict_free(methods->range);
+
+   dict_free(methods->none);
+
+   free(methods);
+}
+
+void runtime_free(Runtime *rt)
+{
+   if (!rt)
+      return;
+
+   if (rt->env)
+      env_free(rt->env);
+
+   if (rt->methods)
+      methods_free(rt->methods);
+
+   if (rt->modules)
+      dict_free(rt->modules);
+
+   free(rt);
 }
 
 static void class_free(Class *class)
@@ -67,8 +156,8 @@ static void class_free(Class *class)
    list_free(class->statements, statement_free);
    list_free(class->parents, data_free);
 
-   if (class->env)
-      env_free(class->env);
+   if (class->rt)
+      runtime_free(class->rt);
 
    free(class);
 }
@@ -95,11 +184,11 @@ static void ref_free(Object *rc, DataType type)
       break;
 
    case TYPE_DICT:
-      dict_free((Dict *)object, pair_free);
+      dict_free((Dict *)object);
       break;
 
    case TYPE_SET:
-      set_free((Set *)object, data_free);
+      set_free((Set *)object);
       break;
 
    case TYPE_FUNCTION:
@@ -116,21 +205,6 @@ static void ref_free(Object *rc, DataType type)
    free(rc);
 }
 
-static void params_free(void *params)
-{
-   if (!params)
-      return;
-
-   ParamInfo *param = (ParamInfo *)params;
-   if (param->name)
-      free(param->name);
-
-   if (param->defaultValue)
-      ast_free(param->defaultValue);
-
-   free(param);
-}
-
 static void for_free(ForLoop *loop)
 {
    if (!loop)
@@ -142,19 +216,6 @@ static void for_free(ForLoop *loop)
    ast_free(loop->iterable);
    list_free(loop->body, statement_free);
    free(loop);
-}
-
-static void ast_free(void *ast)
-{
-   if (!ast)
-      return;
-
-   ASTnode *node = (ASTnode *)ast;
-   ast_free(node->left);
-   ast_free(node->right);
-   data_free(node->data);
-
-   free(node);
 }
 
 static void flow_free(Flow *flow)
@@ -182,7 +243,7 @@ static void while_free(WhileLoop *loop)
    if (loop->condition)
       ast_free(loop->condition);
    if (loop->body)
-      freeList(loop->body, statement_free);
+      list_free(loop->body, statement_free);
 
    free(loop);
 }
@@ -199,7 +260,33 @@ void assignment_free(Assignment *asmt)
    free(asmt);
 }
 
-void statement_free(void *statement)
+static void catch_free(Catch *catch)
+{
+   if (!catch)
+      return;
+
+   data_free(catch->alias);
+   data_free(catch->errorName);
+   list_free(catch->statements, statement_free);
+
+   if (catch->errorMsg)
+      free(catch->errorMsg);
+
+   return;
+}
+
+static void exception_free(Exception *except)
+{
+   if (!except)
+      return;
+
+   list_free(except->tried, statement_free);
+   catch_free(except->catched);
+   list_free(except->finally, statement_free);
+   return;
+}
+
+void statement_free(const void *statement)
 {
    if (!statement)
       return;
@@ -231,6 +318,10 @@ void statement_free(void *statement)
 
    case STMT_ASSIGNMENT:
       assignment_free((Assignment *)stmt->data);
+      break;
+
+   case STMT_EXCEPTION:
+      exception_free((Exception *)stmt->data);
       break;
 
    case STMT_BREAK:
@@ -268,12 +359,12 @@ static void indexed_free(Indexed *index)
    if (!index)
       return;
 
-   data_free(index->var);
-   ast_free(index->val);
+   ast_free(index->object);
+   ast_free(index->value);
    free(index);
 }
 
-void data_free(void *data)
+void data_free(const void *data)
 {
    if (!data)
       return;
@@ -282,7 +373,7 @@ void data_free(void *data)
    switch (d->type)
    {
    case TYPE_STR:
-      free(d->str.string);
+      free(d->str);
       break;
 
    // Reference-counted types - decrement ref count
@@ -309,11 +400,11 @@ void data_free(void *data)
 
    case TYPE_INT:
    case TYPE_BOOL:
-      free(d->integer.atom);
+      free(d->atom);
       break;
 
    case TYPE_FLOAT:
-      free(d->decimal.real);
+      free(d->real);
       break;
 
    case TYPE_RANGE:
@@ -331,79 +422,8 @@ void data_free(void *data)
    case TYPE_NONE:
       break;
    default:
+      free((char *)d);
       return;
    }
    free(d);
-}
-
-void env_free(Environment *env)
-{
-   if (!env)
-      return;
-
-   env->ref--;
-
-   if (env->ref > 0)
-      return;
-
-   dict_free(env->vars, pair_free);
-   dict_free(env->global_vars, pair_free);
-   dict_free(env->nonlocal_vars, pair_free);
-
-   if (env->parent)
-      env_free(env->parent);
-
-   free(env);
-}
-
-static void methods_free(Method *methods)
-{
-   if (!methods)
-      return;
-
-   if (methods->builtin)
-      dict_free(methods->builtin, pair_free);
-
-   if (methods->set)
-      dict_free(methods->set, pair_free);
-
-   if (methods->list)
-      dict_free(methods->list, pair_free);
-
-   if (methods->atom)
-      dict_free(methods->atom, pair_free);
-
-   if (methods->real)
-      dict_free(methods->real, pair_free);
-
-   if (methods->dict)
-      dict_free(methods->dict, pair_free);
-
-   if (methods->str)
-      dict_free(methods->str, pair_free);
-
-   if (methods->range)
-      dict_free(methods->range, pair_free);
-
-   if (methods->none)
-      dict_free(methods->none, pair_free);
-
-   free(methods);
-}
-
-void runtime_free(Runtime *rt)
-{
-   if (!rt)
-      return;
-
-   if (rt->env)
-      env_free(rt->env);
-
-   if (rt->methods)
-      methods_free(rt->methods);
-
-   if (rt->modules)
-      freeDict(rt->modules);
-
-   free(rt);
 }
