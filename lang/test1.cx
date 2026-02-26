@@ -1,0 +1,34 @@
+class Animal:
+   function __struct__(this):
+      this.name = None
+      this.action_name = None
+
+   function action(this):
+      print(this.name + " is " + this.action_name)
+
+
+class Dog(Animal):
+   function __struct__(this):
+      this.name = "Brooks"
+      this.color = "Brown"
+      this.action_name = "barking"
+
+   function action(this):
+      print(this.name + " is " + this.action_name)
+
+
+class Cat(Animal):
+   function __struct__(this):
+      this.name = "Tom"
+      this.color = "grey"
+      this.action_name = "purring"
+
+   class Node:
+      function __struct__(self):
+         pass
+
+   function action(this):
+      print(this.name + " is " + this.action_name)
+
+
+print("hello world")

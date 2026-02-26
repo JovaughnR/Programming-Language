@@ -1,0 +1,135 @@
+from test1 import *
+
+print(Dog)
+
+try:
+   print(Cat)
+catch Error as e:
+   print(e)
+
+
+x = 2 * 4 + 3 / 2 + 8 ** 2
+print(x)
+
+list = [2, 3, 4, 2, 5, 8, 10]
+string = "helloworld"
+print(string)
+
+print(list * 2)
+
+
+dict = {1: "hello", 2: "world"}
+print(dict)
+
+
+print("Keys:", dict.keys())
+print("Values:", dict.values())
+print("Items:", dict.items())
+
+
+items = dict.items()
+item = items[0]
+
+item.append(9)
+
+print(item)
+
+
+print(dict.get(1))
+print(dict.get(2))
+
+
+
+set = {3, 4, 5, 6, "93"}
+set.add(100)
+print("Set Has:",set.has(3))
+print(set)
+
+
+
+x = list.pop()
+print(list[::])
+
+print(type(x))
+
+set_copy = set.copy()
+set_copy.add(5252)
+print(set_copy.union({1000, 52, 98}))
+print(set_copy)
+
+matrix = [[0, 1], [3, 4]]
+
+str = "hello world"
+print(str.upper())
+print(str.lower())
+print(str.capitalize())
+print(str.title())
+
+num = 92
+print(num.bit_count())
+print(num.bit_length())
+
+
+print(range(10))
+
+for char in str:
+   print(char)
+
+
+dir = {true: 8352, false: 528 }
+
+y = dir.get(true)
+
+print("getting y")
+print("Y: ",y)
+print("End of program")
+
+y = +num
+print(y)
+
+
+arr = [32, 52]
+print(arr)
+
+print(arr.pop() + 52)
+print(arr.pop() + 32)
+print(arr)
+
+
+class Link:
+   func __struct__(this, name, age):
+      this.age = age
+      this.name = name
+
+   func do_supn(this):
+      print(this.age)
+      print(this.name)
+
+
+link = Link("Jovaughn", 28)
+print(type(link))
+
+
+
+class Node:
+   func __struct__(this, data):
+      this.data = data
+      this.next = none
+
+class LinkedList:
+   func __struct__(this, head=none):
+      this.head = head
+      this.length = 0
+      
+   func insert(this, data):
+      if (this.head == none):
+         this.head = Node(data)
+      else:
+         cur_node = this.head
+         while (cur_node):
+            cur_node = cur_node.next
+         cur_node = Node(data)
+      this.length += 1
+
+  
+ll = LinkedList()
