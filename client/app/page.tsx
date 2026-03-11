@@ -40,37 +40,154 @@ export type DiagnosticMarker = {
 const DEFAULT_TABS: Tab[] = [
 	{
 		id: "1",
-		name: "main.lang",
+		name: "main.cx",
 		isModified: false,
-		code: `# Welcome to LangIDE
+		code: `# Welcome to cxIDE
 # Write your custom language code here
 
-func greet(name):
-  print("Hello, " + name + "!")
+func greet(name) {
+  print("Hello, " + name + "!");
+}
 
-
-greet("World")
+greet("World");
 `,
 	},
 	{
 		id: "2",
-		name: "examples.lang",
+		name: "examples.cx",
 		isModified: false,
 		code: `# Fibonacci example
-func fib(n):
-  if (n <= 1) return n
-  return fib(n - 1) + fib(n - 2)
 
+func fib(n) {
+	if (n <= 1) {
+		return n;
+	}
+	return fib(n - 1) + fib(n - 2);
+}
 
-i = 0
-while (i < 10) :
-  print(fib(i))
-  i = i + 1
-
+i = 0;
+while (i < 10) {
+	print(fib(i));
+	i = i + 1;
+}
 `,
 	},
 ];
 
+// ── Stdin Modal ───────────────────────────────────────────────────────────────
+function StdinModal({
+	inputCount,
+	onSubmit,
+	onCancel,
+}: {
+	inputCount: number;
+	onSubmit: (stdin: string) => void;
+	onCancel: () => void;
+}) {
+	const [value, setValue] = useState("");
+
+	return (
+		<div
+			style={{
+				position: "fixed",
+				inset: 0,
+				background: "rgba(0,0,0,0.6)",
+				display: "flex",
+				alignItems: "center",
+				justifyContent: "center",
+				zIndex: 1000,
+			}}
+		>
+			<div
+				style={{
+					background: "var(--bg-panel, #1e1e1e)",
+					border: "1px solid var(--border, #333)",
+					borderRadius: "8px",
+					padding: "24px",
+					width: "420px",
+					display: "flex",
+					flexDirection: "column",
+					gap: "12px",
+					boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+				}}
+			>
+				<div
+					style={{
+						color: "var(--text-primary, #d4d4d4)",
+						fontFamily: "JetBrains Mono, monospace",
+						fontSize: "13px",
+						fontWeight: 600,
+					}}
+				>
+					Program requires input
+				</div>
+				<div
+					style={{
+						color: "var(--text-muted, #858585)",
+						fontFamily: "JetBrains Mono, monospace",
+						fontSize: "12px",
+					}}
+				>
+					{inputCount} input() call{inputCount > 1 ? "s" : ""} detected. Enter one
+					value per line:
+				</div>
+				<textarea
+					autoFocus
+					value={value}
+					onChange={(e) => setValue(e.target.value)}
+					placeholder={`line 1\nline 2\n...`}
+					rows={Math.min(inputCount + 1, 8)}
+					style={{
+						background: "var(--bg-primary, #141414)",
+						color: "var(--text-primary, #d4d4d4)",
+						border: "1px solid var(--border, #333)",
+						borderRadius: "4px",
+						padding: "8px",
+						fontFamily: "JetBrains Mono, monospace",
+						fontSize: "13px",
+						resize: "vertical",
+						outline: "none",
+					}}
+				/>
+				<div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+					<button
+						onClick={onCancel}
+						style={{
+							padding: "6px 16px",
+							borderRadius: "4px",
+							border: "1px solid var(--border, #333)",
+							background: "transparent",
+							color: "var(--text-muted, #858585)",
+							fontFamily: "JetBrains Mono, monospace",
+							fontSize: "12px",
+							cursor: "pointer",
+						}}
+					>
+						Cancel
+					</button>
+					<button
+						onClick={() => onSubmit(value)}
+						style={{
+							padding: "6px 16px",
+							borderRadius: "4px",
+							border: "none",
+							background: "#0078d4",
+							color: "#fff",
+							fontFamily: "JetBrains Mono, monospace",
+							fontSize: "12px",
+							cursor: "pointer",
+							fontWeight: 600,
+						}}
+					>
+						Run
+					</button>
+				</div>
+			</div>
+		</div>
+	);
+}
+
+// ── Main IDE Page ─────────────────────────────────────────────────────────────
 export default function IDEPage() {
 	const [tabs, setTabs] = useState<Tab[]>(DEFAULT_TABS);
 	const [activeTabId, setActiveTabId] = useState("1");
@@ -78,7 +195,7 @@ export default function IDEPage() {
 		{
 			id: "0",
 			type: "system",
-			text: "LangIDE ready. Press ▶ Run or Ctrl+Enter to execute.",
+			text: "cxIDE ready. Press ▶ Run or Ctrl+Enter to execute.",
 			timestamp: now(),
 		},
 	]);
@@ -86,12 +203,24 @@ export default function IDEPage() {
 	const [isRunning, setIsRunning] = useState(false);
 	const [theme, setTheme] = useState<"dark" | "light">("dark");
 	const [showSnippets, setShowSnippets] = useState(false);
-	const [activePanel, setActivePanel] = useState<"output" | "problems">(
-		"output",
-	);
+	const [activePanel, setActivePanel] = useState<"output" | "problems">("output");
 	const [cursorInfo, setCursorInfo] = useState({ line: 1, col: 1 });
 
+	// Stdin modal state
+	const [stdinModal, setStdinModal] = useState<{
+		inputCount: number;
+		resolve: (stdin: string) => void;
+		reject: () => void;
+	} | null>(null);
+
 	const activeTab = tabs.find((t) => t.id === activeTabId) ?? tabs[0];
+
+	// Prompts user for stdin input via modal, returns a Promise<string>
+	const promptForStdin = (inputCount: number): Promise<string> => {
+		return new Promise((resolve, reject) => {
+			setStdinModal({ inputCount, resolve, reject });
+		});
+	};
 
 	const updateCode = useCallback(
 		(code: string) => {
@@ -108,7 +237,7 @@ export default function IDEPage() {
 		const id = String(Date.now());
 		const newTab: Tab = {
 			id,
-			name: `untitled-${tabs.length + 1}.lang`,
+			name: `untitled-${tabs.length + 1}.cx`,
 			code: "",
 			isModified: false,
 		};
@@ -129,6 +258,23 @@ export default function IDEPage() {
 
 	const runCode = async () => {
 		if (isRunning) return;
+
+		const code = activeTab.code;
+
+		// Detect input() calls — prompt user for stdin if needed
+		const inputMatches = code.match(/\binput\s*\(/g);
+		const inputCount = inputMatches ? inputMatches.length : 0;
+
+		let stdinData = "";
+		if (inputCount > 0) {
+			try {
+				stdinData = await promptForStdin(inputCount);
+			} catch {
+				// User cancelled — don't run
+				return;
+			}
+		}
+
 		setIsRunning(true);
 		setMarkers([]);
 
@@ -148,8 +294,9 @@ export default function IDEPage() {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({
-					code: activeTab.code,
+					code,
 					filename: activeTab.name,
+					stdin: stdinData,
 				}),
 			});
 
@@ -180,7 +327,6 @@ export default function IDEPage() {
 					}));
 				setOutput((prev) => [...prev, ...errLines]);
 
-				// Parse error markers from stderr
 				const parsed = parseErrors(data.stderr);
 				setMarkers(parsed);
 				if (parsed.length > 0) setActivePanel("problems");
@@ -252,6 +398,21 @@ export default function IDEPage() {
 				overflow: "hidden",
 			}}
 		>
+			{/* Stdin modal — rendered above everything */}
+			{stdinModal && (
+				<StdinModal
+					inputCount={stdinModal.inputCount}
+					onSubmit={(stdin) => {
+						stdinModal.resolve(stdin);
+						setStdinModal(null);
+					}}
+					onCancel={() => {
+						stdinModal.reject();
+						setStdinModal(null);
+					}}
+				/>
+			)}
+
 			{/* Top toolbar */}
 			<Toolbar
 				isRunning={isRunning}
@@ -337,10 +498,6 @@ function now() {
 
 function parseErrors(stderr: string): DiagnosticMarker[] {
 	const markers: DiagnosticMarker[] = [];
-	// Handles common error formats:
-	//   filename:line:col: error: message
-	//   line N: message
-	//   Error at line N: message
 	const patterns = [
 		/(?:.*):(\d+):(\d+):\s*(error|warning):\s*(.+)/i,
 		/(?:.*):(\d+):\s*(error|warning):\s*(.+)/i,

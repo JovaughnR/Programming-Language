@@ -1,0 +1,74 @@
+# ============================================================
+#  io.cx — IO Module
+#  Public interface for file input/output operations.
+#
+#  Usage:
+#     import io;
+#     f = io.open("data.txt");
+#     content = io.read(f);
+#     io.close(f);
+# ============================================================
+
+# open(path, mode="r") -> file
+# Opens a file and returns a file handle.
+# Modes: "r" read, "w" write, "a" append, "r+" read/write
+# Example: f = io.open("data.txt")
+# Example: f = io.open("out.txt", "w")
+func open(path, mode="r") : return __io_open__(path, mode);
+
+# close(file) -> none
+# Closes an open file handle. Always close files when done.
+# Example: io.close(f)
+func close(file) : return __io_close__(file);
+
+# read(file) -> str
+# Reads the entire file contents as a string.
+# Example: content = io.read(f)
+func read(file) : return __io_read__(file, none);
+
+# read_bytes(file, n) -> str
+# Reads up to n bytes from the file.
+# Example: chunk = io.read_bytes(f, 128)
+func read_bytes(file, n) : return __io_read__(file, n);
+
+# readline(file) -> str
+# Reads one line from the file.
+# Returns empty string at end of file.
+# Example: line = io.readline(f)
+func readline(file) : return __io_readline__(file);
+
+# readlines(file) -> list
+# Reads all lines and returns them as a list of strings.
+# Newline characters are stripped from each line.
+# Example: lines = io.readlines(f)
+func readlines(file) : return __io_readlines__(file);
+
+# write(file, content) -> int
+# Writes a string to the file. Returns bytes written.
+# Example: io.write(f, "hello world")
+func write(file, content) : return __io_write__(file, content);
+
+# writeline(file, content) -> none
+# Writes a string followed by a newline to the file.
+# Example: io.writeline(f, "hello world")
+func writeline(file, content) : return __io_writeline__(file, content);
+
+# writelines(file, lines) -> none
+# Writes a list of strings to the file, each on its own line.
+# Example: io.writelines(f, ["line1", "line2", "line3"])
+func writelines(file, lines) : return __io_writelines__(file, lines);
+
+# seek(file, offset) -> none
+# Moves the file cursor to the given byte offset from the start.
+# Example: io.seek(f, 0)   # rewind to beginning
+func seek(file, offset) : return __io_seek__(file, offset);
+
+# tell(file) -> int
+# Returns the current byte position of the file cursor.
+# Example: pos = io.tell(f)
+func tell(file) : return __io_tell__(file);
+
+# flush(file) -> none
+# Flushes the write buffer to disk immediately.
+# Example: io.flush(f)
+func flush(file) : return __io_flush__(file);

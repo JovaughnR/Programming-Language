@@ -1,0 +1,61 @@
+# ============================================================
+#  path.cx — Path Module
+#  Public interface for file path manipulation.
+#
+#  Usage:
+#     import path;
+#     print(path.join("/usr", "local", "bin"));
+# ============================================================
+
+# join(a, b, ...) -> str
+# Joins path components with the OS separator.
+# If a component is absolute it resets the path from that point.
+# Example: path.join("/usr", "local", "bin") -> "/usr/local/bin"
+func join(*args) : return __path_join__(args);
+
+# basename(path) -> str
+# Returns the final component of a path.
+# Example: path.basename("/usr/local/bin") -> "bin"
+func basename(p) : return __path_basename__(p);
+
+# dirname(path) -> str
+# Returns the directory component of a path.
+# Example: path.dirname("/usr/local/bin") -> "/usr/local"
+func dirname(p) : return __path_dirname__(p);
+
+# extension(path) -> str
+# Returns the file extension including the dot, or "" if none.
+# Example: path.extension("file.txt") -> ".txt"
+# Example: path.extension("file")     -> ""
+func extension(p) : return __path_extension__(p);
+
+# absolute(path) -> str
+# Returns the absolute path resolved from the current directory.
+# Example: path.absolute("./modules") -> "/usr/local/lang/modules"
+func absolute(p) : return __path_absolute__(p);
+
+# normalize(path) -> str
+# Resolves . and .. components in a path.
+# Example: path.normalize("/usr/local/../bin") -> "/usr/bin"
+func normalize(p) : return __path_normalize__(p);
+
+# split(path) -> list
+# Splits path into [dirname, basename].
+# Example: path.split("/usr/local/bin") -> ["/usr/local", "bin"]
+func split(p) : return __path_split__(p);
+
+# splitext(path) -> list
+# Splits path into [root, extension].
+# Example: path.splitext("file.txt") -> ["file", ".txt"]
+func splitext(p) : return __path_splitext__(p);
+
+# isabs(path) -> bool
+# Returns true if the path is absolute.
+# Example: path.isabs("/usr/local") -> true
+# Example: path.isabs("./local")    -> false
+func isabs(p) : return __path_isabs__(p);
+
+# expanduser(path) -> str
+# Expands ~ to the user's home directory.
+# Example: path.expanduser("~/documents") -> "/Users/jovaughn/documents"
+func expanduser(p) : return __path_expanduser__(p);

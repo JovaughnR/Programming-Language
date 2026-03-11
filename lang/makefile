@@ -1,15 +1,49 @@
 CC = gcc
-CFLAGS = -fsanitize=address -g -Wall -I./include -I./lib
-LIBS = -lm
+CURL_PREFIX = $(shell brew --prefix curl)
+CFLAGS = -g -Wall -I./include -I./lib -I/opt/homebrew/include -I$(CURL_PREFIX)/include
+LIBS = -lm -L/opt/homebrew/lib -lgmp -L$(CURL_PREFIX)/lib -lcurl -lsqlite3 -lpthread
 
-SOURCES = ./parse/y.tab.c ./parse/lex.yy.c eval.c exec.c utils.c list.c set.c \
-          dict.c str.c maloc.c daloc.c error.c ./builtin/build.c ./builtin/methods.c \
-          class.c arena.c module.c format.c
+SOURCES = ./parse/y.tab.c ./parse/lex.yy.c \
+          ./core/class.c ./core/arena.c \
+          ./core/eval.c ./core/exec.c \
+          ./core/utils.c ./core/list.c \
+          ./core/set.c ./core/dict.c \
+          ./core/str.c ./core/maloc.c \
+          ./core/daloc.c ./core/error.c \
+          ./core/format.c ./core/module.c \
+          ./builtin/build.c ./builtin/methods.c \
+          ./builtin/maths.c ./builtin/time.c \
+          ./builtin/os.c ./builtin/io.c \
+          ./builtin/random.c ./builtin/json.c \
+          ./builtin/sys.c ./builtin/path.c \
+          ./builtin/regex.c ./builtin/hash.c \
+          ./builtin/csv.c ./builtin/stats.c \
+          ./builtin/decimal.c ./builtin/env.c \
+          ./builtin/log.c ./builtin/args.c \
+          ./builtin/net.c ./builtin/socket.c \
+          ./builtin/db.c ./builtin/thread.c \
+          ./builtin/async.c ./builtin/http.c \
+	   ./vm/vm.c ./vm/disasm.c \
+			 ./vm/chunk.c ./vm/compiler.c \
+			 ./vm/serial.c \
+	  		 main.c
 
-OBJECTS = $(SOURCES:.c=.o)
-TARGET = interpreter
+OBJ_DIR = ./build
+OBJECTS = $(addprefix $(OBJ_DIR)/, $(notdir $(SOURCES:.c=.o)))
+TARGET  = cxlang
+
+# ---------------------------------------------------------------------------
+# Top-level targets
+# ---------------------------------------------------------------------------
 
 all: ./parse/y.tab.c ./parse/lex.yy.c $(TARGET)
+
+$(TARGET): $(OBJECTS)
+	$(CC) $(CFLAGS) -o $@ $(OBJECTS) $(LIBS)
+
+# ---------------------------------------------------------------------------
+# Parser / lexer generation
+# ---------------------------------------------------------------------------
 
 ./parse/y.tab.c ./parse/y.tab.h: ./parse/parser.y
 	yacc -d ./parse/parser.y
@@ -20,64 +54,34 @@ all: ./parse/y.tab.c ./parse/lex.yy.c $(TARGET)
 	lex ./parse/tokens.l
 	mv lex.yy.c ./parse/lex.yy.c
 
-$(TARGET): $(OBJECTS)
-	$(CC) $(CFLAGS) -o $@ $(OBJECTS) $(LIBS)
+# ---------------------------------------------------------------------------
+# Compile rules — one pattern per source directory
+# ---------------------------------------------------------------------------
 
-./parse/y.tab.o: ./parse/y.tab.c
+$(OBJ_DIR)/%.o: ./parse/%.c | $(OBJ_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-./parse/lex.yy.o: ./parse/lex.yy.c
+$(OBJ_DIR)/%.o: ./core/%.c | $(OBJ_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-eval.o: eval.c
+$(OBJ_DIR)/%.o: ./builtin/%.c | $(OBJ_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-exec.o: exec.c
+$(OBJ_DIR)/%.o: ./vm/%.c | $(OBJ_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-format.o: format.c
+$(OBJ_DIR)/%.o: %.c | $(OBJ_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-list.o: list.c
-	$(CC) $(CFLAGS) -c $< -o $@
+$(OBJ_DIR):
+	mkdir -p $(OBJ_DIR)
 
-dict.o: dict.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
-set.o: set.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
-str.o: str.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
-utils.o: utils.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
-maloc.o: maloc.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
-daloc.o: daloc.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
-error.o: error.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
-class.o: class.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
-arena.o: arena.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
-module.o: module.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
-./builtin/build.o: ./builtin/build.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
-./builtin/methods.o: ./builtin/methods.c
-	$(CC) $(CFLAGS) -c $< -o $@
+# ---------------------------------------------------------------------------
+# Housekeeping
+# ---------------------------------------------------------------------------
 
 clean:
-	rm -f $(OBJECTS) $(TARGET) ./parse/y.tab.c ./parse/y.tab.h ./parse/lex.yy.c
+	rm -rf $(OBJ_DIR) $(TARGET) \
+	       ./parse/y.tab.c ./parse/y.tab.h ./parse/lex.yy.c
 
 .PHONY: all clean

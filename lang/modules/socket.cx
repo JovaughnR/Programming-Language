@@ -1,0 +1,97 @@
+# ============================================================
+#  socket.cx — Socket Module
+#  Raw TCP/UDP socket support for building servers and clients.
+#
+#  Usage:
+#     import socket;
+#
+#  TCP Server:
+#     s = socket.create("tcp");
+#     socket.bind(s, "0.0.0.0", 8080);
+#     socket.listen(s);
+#     conn = socket.accept(s);
+#     data = socket.recv(conn["socket"]);
+#     socket.send(conn["socket"], "Hello!");
+#     socket.close(conn["socket"]);
+#     socket.close(s);
+#
+#  TCP Client:
+#     s = socket.create("tcp");
+#     socket.connect(s, "example.com", 80);
+#     socket.send(s, "GET / HTTP/1.0\r\nHost: example.com\r\n\r\n");
+#     print(socket.recv(s));
+#     socket.close(s);
+# ============================================================
+
+# create(type) -> socket
+# Creates a new socket. type must be "tcp" or "udp".
+# Returns a socket handle used by all other socket functions.
+# Example: s = socket.create("tcp")
+func create(type) : return __socket_create__(type);
+
+# bind(socket, host, port) -> bool
+# Binds a socket to a local address and port.
+# Use "0.0.0.0" to listen on all network interfaces.
+# Example: socket.bind(s, "0.0.0.0", 8080)
+func bind(sock, host, port) : return __socket_bind__(sock, host, port);
+
+# listen(socket, backlog=5) -> bool
+# Marks a TCP socket as a passive server socket.
+# backlog controls the queue size for pending connections.
+# Example: socket.listen(s)
+# Example: socket.listen(s, 10)
+func listen(sock, backlog=5) : return __socket_listen__(sock, backlog);
+
+# accept(socket) -> dict
+# Waits for and accepts an incoming TCP connection.
+# Returns dict: {"socket": handle, "host": str, "port": int}
+# Blocks until a client connects.
+# Example: conn = socket.accept(s)
+# Example: client = conn["socket"]
+func accept(sock) : return __socket_accept__(sock);
+
+# connect(socket, host, port) -> bool
+# Connects a TCP socket to a remote server.
+# Resolves hostnames automatically.
+# Example: socket.connect(s, "example.com", 80)
+# Example: socket.connect(s, "127.0.0.1", 3000)
+func connect(sock, host, port) : return __socket_connect__(sock, host, port);
+
+# send(socket, data) -> int
+# Sends a string through a connected socket.
+# Returns the number of bytes actually sent.
+# Example: socket.send(s, "Hello, World!")
+# Example: socket.send(s, "GET / HTTP/1.0\r\nHost: example.com\r\n\r\n")
+func send(sock, data) : return __socket_send__(sock, data);
+
+# recv(socket, size=4096) -> str
+# Receives data from a connected socket.
+# Returns received data as a string. Returns "" on close.
+# Blocks until data is available.
+# Example: data = socket.recv(s)
+# Example: data = socket.recv(s, 1024)
+func recv(sock, size=4096) : return __socket_recv__(sock, size);
+
+# close(socket) -> none
+# Closes a socket and releases its resources.
+# Always call close() when done with a socket.
+# Example: socket.close(s)
+func close(sock) : return __socket_close__(sock);
+
+# setopt(socket, option, value) -> bool
+# Sets a socket option. Available options:
+#   "reuseaddr"   -> bool  allow reuse of local address
+#   "keepalive"   -> bool  enable TCP keepalive
+#   "nodelay"     -> bool  disable Nagle algorithm
+#   "nonblocking" -> bool  enable non-blocking mode
+#   "timeout"     -> int   send/recv timeout in milliseconds
+# Example: socket.setopt(s, "reuseaddr", true)
+# Example: socket.setopt(s, "timeout", 5000)
+func setopt(sock, option, value) : return __socket_setopt__(sock, option, value);
+
+# getaddr(host) -> dict
+# Resolves a hostname to its IP address.
+# Returns dict: {"host": str, "ip": str}
+# Example: info = socket.getaddr("example.com")
+# Example: print(info["ip"])
+func getaddr(host) : return __socket_getaddr__(host);

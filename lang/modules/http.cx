@@ -1,0 +1,26 @@
+# ============================================================
+#  http.cx — HTTP Server Module
+#
+#  Usage:
+#     import http;
+#
+#     app = http.server();
+#
+#     http.get(app, "/", func(req, res) {
+#         res["_body"] = '{"message": "hello"}';
+#         res["_status"] = 200;
+#     });
+#
+#     http.listen(app, 8080);
+# ============================================================
+
+func server() : return __http_server__();
+
+func get(app, path, handler) : return __http_get__(app, path, handler);
+func post(app, path, handler) : return __http_post__(app, path, handler);
+func put(app, path, handler) : return __http_put__(app, path, handler);
+func delete(app, path, handler) : return __http_delete__(app, path, handler);
+func patch(app, path, handler) : return __http_patch__(app, path, handler);
+func use(app, handler) : return __http_use__(app, handler);
+func listen(app, port, host = "0.0.0.0") : return __http_listen__(app, port, host);
+func stop(app) : return __http_stop__(app);

@@ -15,6 +15,7 @@ export default function StatusBar({
 	activeTab,
 	cursorInfo,
 	isRunning,
+	
 	errorCount,
 	warnCount,
 }: Props) {

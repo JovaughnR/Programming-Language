@@ -1,0 +1,98 @@
+# ============================================================
+#  db.cx — SQLite Database Module
+#  Full SQLite3 support including transactions and prepared statements.
+#
+#  Usage:
+#     import db;
+#     conn = db.open("myapp.db");
+#     db.exec(conn, "CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT)");
+#     db.exec(conn, "INSERT INTO users (name) VALUES ('Alice')");
+#     rows = db.query(conn, "SELECT * FROM users");
+#     print(rows[0]["name"]);
+#     db.close(conn);
+# ============================================================
+
+# open(path) -> db
+# Opens or creates a SQLite database file.
+# Use ":memory:" for a temporary in-memory database.
+# Example: conn = db.open("myapp.db")
+# Example: conn = db.open(":memory:")
+func open(path) : return __db_open__(path);
+
+# close(db) -> none
+# Closes a database connection and releases resources.
+# Example: db.close(conn)
+func close(conn) : return __db_close__(conn);
+
+# exec(db, sql) -> bool
+# Executes a SQL statement with no return value.
+# Use for CREATE, INSERT, UPDATE, DELETE, DROP.
+# Example: db.exec(conn, "CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT)")
+# Example: db.exec(conn, "DELETE FROM users WHERE id = 1")
+func exec(conn, sql) : return __db_exec__(conn, sql);
+
+# query(db, sql, params=[]) -> list
+# Executes a SELECT and returns all rows as a list of dicts.
+# Use ? placeholders to safely pass parameters.
+# Example: rows = db.query(conn, "SELECT * FROM users")
+# Example: rows = db.query(conn, "SELECT * FROM users WHERE age > ?", [18])
+func query(conn, sql, params = none) : return __db_query__(conn, sql, params);
+
+# prepare(db, sql) -> stmt
+# Prepares a SQL statement for repeated execution.
+# More efficient for batch inserts or repeated queries.
+# Example: stmt = db.prepare(conn, "INSERT INTO users (name) VALUES (?)")
+func prepare(conn, sql) : return __db_prepare__(conn, sql);
+
+# bind(stmt, params) -> bool
+# Binds a list of parameters to a prepared statement.
+# Must call before each step() when reusing a statement.
+# Example: db.bind(stmt, ["Alice"])
+func bind(stmt, params) : return __db_bind__(stmt, params, none);
+
+# step(stmt) -> dict | none
+# Executes one step of a prepared statement.
+# Returns the next row as a dict, or none when finished.
+# Example: row = db.step(stmt)
+func step(stmt) : return __db_step__(stmt);
+
+# finalize(stmt) -> none
+# Releases a prepared statement. Always call when done.
+# Example: db.finalize(stmt)
+func finalize(stmt) : return __db_finalize__(stmt);
+
+# lastid(db) -> int
+# Returns the rowid of the most recent INSERT.
+# Example: id = db.lastid(conn)
+func lastid(conn) : return __db_lastid__(conn);
+
+# changes(db) -> int
+# Returns the number of rows affected by the last statement.
+# Example: n = db.changes(conn)
+func changes(conn) : return __db_changes__(conn);
+
+# begin(db) -> bool
+# Starts a transaction. Wrap multiple operations for atomicity.
+# Example: db.begin(conn)
+func begin(conn) : return __db_begin__(conn);
+
+# commit(db) -> bool
+# Commits the current transaction.
+# Example: db.commit(conn)
+func commit(conn) : return __db_commit__(conn);
+
+# rollback(db) -> bool
+# Rolls back the current transaction on error.
+# Example: db.rollback(conn)
+func rollback(conn) : return __db_rollback__(conn);
+
+# tables(db) -> list
+# Returns a list of all table names in the database.
+# Example: print(db.tables(conn))  -> ["users", "posts"]
+func tables(conn) : return __db_tables__(conn);
+
+# schema(db, table) -> list
+# Returns column info for a table as a list of dicts.
+# Each dict: {name, type, notnull, default, pk}
+# Example: cols = db.schema(conn, "users")
+func schema(conn, table) : return __db_schema__(conn, table);

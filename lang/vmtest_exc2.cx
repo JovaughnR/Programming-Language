@@ -1,0 +1,26 @@
+func risky(x) {
+    try {
+        if (x == 0) {
+            throw "cannot be zero";
+        }
+        return 100 / x;
+    } catch Error as e {
+        print("caught in func: " + e);
+        return -1;
+    }
+}
+
+print(risky(5));
+print(risky(0));
+print(risky(2));
+
+try {
+    try {
+        throw "inner";
+    } catch Error as e {
+        print("inner caught: " + e);
+        throw "rethrown";
+    }
+} catch Error as e {
+    print("outer caught: " + e);
+}

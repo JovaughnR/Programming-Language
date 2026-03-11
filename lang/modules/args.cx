@@ -1,0 +1,43 @@
+# ============================================================
+#  args.cx — Args Module
+#  Command line argument parsing with schema validation.
+#
+#  Usage:
+#     import args;
+#     schema = dict();
+#     schema["port"] = {"type": "int", "default": 8080, "help": "Port"};
+#     parsed = args.parse(schema);
+#     print(args.get("port"));
+# ============================================================
+
+# parse(schema) -> dict
+# Parses command line arguments according to a schema dict.
+# Schema keys are flag names, values are dicts with:
+#   "type"    -> "str", "int", "float", or "bool"
+#   "default" -> default value if flag not provided
+#   "help"    -> description shown in usage()
+# Positional args stored under key "_" as a list.
+# Example: parsed = args.parse(schema)
+func parse(schema) : return __args_parse__(schema);
+
+# get(flag, default=none) -> any
+# Gets a parsed flag value by name.
+# Returns default if the flag was not provided.
+# Example: port = args.get("port")
+# Example: host = args.get("host", "localhost")
+func get(flag, default=none) : return __args_get__(flag, default);
+
+# has(flag) -> bool
+# Returns true if the flag was provided on the command line.
+# Example: if (args.has("verbose")) : log.info("verbose mode on");
+func has(flag) : return __args_has__(flag);
+
+# all() -> dict
+# Returns all parsed arguments as a dict.
+# Example: print(args.all())
+func all() : return __args_all__();
+
+# usage(description) -> none
+# Prints a formatted help message built from the schema and exits.
+# Example: args.usage("A simple HTTP server written in CX")
+func usage(description) : return __args_usage__(description);

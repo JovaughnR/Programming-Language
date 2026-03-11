@@ -63,7 +63,7 @@ export default function Toolbar({
 						color: "var(--text-primary)",
 					}}
 				>
-					Lang<span style={{ color: "var(--accent)" }}>IDE</span>
+					cx<span style={{ color: "var(--accent)" }}>IDE</span>
 				</span>
 			</div>
 

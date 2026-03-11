@@ -15,33 +15,34 @@ const SNIPPETS: Snippet[] = [
 		category: "Functions",
 		name: "Function Declaration",
 		description: "Basic function with parameters",
-		code: `func greet(name) {
-  print("Hello, " + name + "!")
+		code: `
+func greet(name) {
+	print("Hello, " + name + "!");
 }
 
-greet("World")`,
+greet("World");`,
 	},
 	{
 		category: "Functions",
 		name: "Recursive Function",
 		description: "Fibonacci via recursion",
-		code: `func fib(n) :
-  if (n <= 1) return n
-  return fib(n - 1) + fib(n - 2)
+		code: `
+func fib(n) {
+	if (n <= 1) : return n;
+	return fib(n - 1) + fib(n - 2);
+}
 
 
-print(fib(10))`,
+print(fib(10));`,
 	},
 	{
 		category: "Control Flow",
 		name: "If / Else",
 		description: "Conditional branching",
-		code: `var x = 10
+		code: `x = 10;
 
-if (x > 5) :
-  print("x is greater than 5")
-else:
-  print("x is 5 or less")
+if (x > 5) : print("x is greater than 5");
+else: print("x is 5 or less");
 `,
 	},
 	{
@@ -49,60 +50,61 @@ else:
 		name: "While Loop",
 		description: "Basic while loop",
 		code: `i = 0
-while (i < 5):
-  print(i)
-  i = i + 1
+while (i < 5) {
+	print(i);
+	i = i + 1;
+}
 `,
 	},
 	{
 		category: "Control Flow",
 		name: "For Loop",
 		description: "Iterating with for",
-		code: `for (var i = 0; i < 10; i = i + 1) {
-  print(i)
+		code: `for val in range(10) {
+	print(val);
 }`,
 	},
 	{
 		category: "Data",
 		name: "Variables",
 		description: "Declaring and using variables",
-		code: `var name = "Alice"
-var age = 30
-var pi = 3.14159
-var active = true
+		code: `name = "Alice";
+age = 30;
+pi = 3.14159;
+active = true;
 
-print(name + " is " + age + " years old")`,
+print(name + " is " + str(age) + " years old");`,
 	},
 	{
 		category: "Data",
 		name: "String Operations",
 		description: "String concatenation and printing",
-		code: `var first = "Hello"
-var second = "World"
-var combined = first + ", " + second + "!"
-print(combined)
-print(len(combined))`,
+		code: `first = "Hello";
+second = "World";
+combined = first + ", " + second + "!";
+print(combined);
+print(len(combined));`,
 	},
 	{
 		category: "Algorithms",
 		name: "Bubble Sort",
 		description: "Classic sorting algorithm",
 		code: `func bubbleSort(arr) {
-  var n = len(arr)
-  var i = 0
+  n = len(arr);
+  i = 0;
   while (i < n) {
-    var j = 0
+    j = 0;
     while (j < n - i - 1) {
       if (arr[j] > arr[j + 1]) {
-        var temp = arr[j]
-        arr[j] = arr[j + 1]
-        arr[j + 1] = temp
+        temp = arr[j];
+        arr[j] = arr[j + 1];
+        arr[j + 1] = temp;
       }
-      j = j + 1
+      j = j + 1;
     }
-    i = i + 1
+    i = i + 1;
   }
-  return arr
+  return arr;
 }`,
 	},
 ];

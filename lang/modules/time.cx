@@ -1,0 +1,98 @@
+# ============================================================
+#  time.cx — Time Module
+#  Public interface for the time module.
+#  Underlying implementations are in time.c (C builtins).
+#
+#  Usage:
+#     import time;
+#     print(time.now());
+#     print(time.timestamp());
+# ============================================================
+
+# ── Current Time ───────────────────────────────────────────
+
+# now() -> dict
+# Returns a dict with all current time and date fields.
+# Keys: hour, minute, second, year, month, day
+# Example: time.now() -> {hour: 14, minute: 30, second: 5, year: 2025, month: 3, day: 4}
+func now() : return __time_now__();
+
+# hour() -> int
+# Returns the current hour (0-23).
+# Example: time.hour() -> 14
+func hour() : return __time_hour__();
+
+# minute() -> int
+# Returns the current minute (0-59).
+# Example: time.minute() -> 30
+func minute() : return __time_minute__();
+
+# second() -> int
+# Returns the current second (0-59).
+# Example: time.second() -> 5
+func second() : return __time_second__();
+
+# ── Current Date ───────────────────────────────────────────
+
+# year() -> int
+# Returns the current year.
+# Example: time.year() -> 2025
+func year() : return __time_year__();
+
+# month() -> int
+# Returns the current month (1-12).
+# Example: time.month() -> 3
+func month() : return __time_month__();
+
+# day() -> int
+# Returns the current day of the month (1-31).
+# Example: time.day() -> 4
+func day() : return __time_day__();
+
+# ── Timestamps ─────────────────────────────────────────────
+
+# timestamp() -> float
+# Returns the current Unix timestamp (seconds since Jan 1, 1970).
+# Useful for measuring elapsed time.
+# Example: time.timestamp() -> 1741046400.0
+func timestamp() : return __time_timestamp__();
+
+# clock() -> float
+# Returns a high-resolution monotonic clock value in seconds.
+# Use for precise elapsed time measurements — not affected by system clock changes.
+# Example: t1 = time.clock(); ...; elapsed = time.diff(t1, time.clock())
+func clock() : return __time_clock__();
+
+# ── Sleep ──────────────────────────────────────────────────
+
+# sleep(seconds) -> none
+# Pauses execution for the given number of seconds.
+# Accepts int or float (e.g. 0.5 for 500ms).
+# Example: time.sleep(1.0)   # pause for 1 second
+# Example: time.sleep(0.5)   # pause for 500ms
+func sleep(seconds) : return __time_sleep__(seconds);
+
+# ── Time Difference ────────────────────────────────────────
+
+# diff(t1, t2) -> float
+# Returns the difference between two timestamps in seconds (t2 - t1).
+# Use with clock() or timestamp() for elapsed time.
+# Example:
+#   t1 = time.clock();
+#   time.sleep(1.0);
+#   elapsed = time.diff(t1, time.clock());
+#   print(elapsed);  # ~1.0
+func diff(t1, t2) : return __time_diff__(t1, t2);
+
+# ── Formatting ─────────────────────────────────────────────
+
+# format(fmt) -> str
+# Formats the current date and time using a format string.
+# Common format codes:
+#   %Y  — 4-digit year        %m  — month (01-12)
+#   %d  — day (01-31)         %H  — hour (00-23)
+#   %M  — minute (00-59)      %S  — second (00-59)
+# Example: time.format("%Y-%m-%d")          -> "2025-03-04"
+# Example: time.format("%H:%M:%S")          -> "14:30:05"
+# Example: time.format("%Y-%m-%d %H:%M:%S") -> "2025-03-04 14:30:05"
+func format(fmt) : return __time_format__(fmt);

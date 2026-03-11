@@ -1,0 +1,35 @@
+# ============================================================
+#  csv.cx — CSV Module
+#  Public interface for CSV parsing and serialization.
+#
+#  Usage:
+#     import csv;
+#     rows = csv.read("data.csv");
+#     print(rows[0]);
+# ============================================================
+
+# parse(text, delimiter=",") -> list
+# Parses a CSV string into a list of rows.
+# Each row is a list of strings.
+# Handles quoted fields and escaped quotes ("").
+# Example: csv.parse("a,b,c\n1,2,3") -> [["a","b","c"],["1","2","3"]]
+func parse(text, delimiter = ",") : return __csv_parse__(text, delimiter);
+
+# stringify(rows, delimiter=",") -> str
+# Converts a list of rows into a CSV formatted string.
+# Automatically quotes fields containing delimiters or quotes.
+# Example: csv.stringify([["a","b"],["1","2"]]) -> "a,b\n1,2\n"
+func stringify(rows, delimiter = ",") : return __csv_stringify__(rows, delimiter);
+
+# read(path, delimiter=",") -> list
+# Reads a CSV file from disk and returns a list of rows.
+# Each row is a list of strings.
+# Example: rows = csv.read("data.csv")
+# Example: rows = csv.read("data.tsv", "\t")
+func read(path, delimiter = ",") : return __csv_read__(path, delimiter);
+
+# write(path, rows, delimiter=",") -> none
+# Writes a list of rows to a CSV file on disk.
+# Example: csv.write("out.csv", [["name","age"],["Alice","30"]])
+# Example: csv.write("out.tsv", rows, "\t")
+func write(path, rows, delimiter = ",") : return __csv_write__(path, rows, delimiter);

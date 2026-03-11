@@ -1,0 +1,176 @@
+# ============================================================
+#  math.cx — Math Module
+#  Public interface for the math module.
+#  Underlying implementations are in maths.c (C builtins).
+#
+#  Usage:
+#     import math;
+#     m = math();
+#     print(m.sqrt(16.0));   # 4.0
+#     print(m.pi);           # 3.141592653589793
+# ============================================================
+
+
+
+# ── Constants ──────────────────────────────────────────────
+#
+# Initializes all mathematical constants as instance fields.
+# Access them directly: m.pi, m.e, m.tau, m.inf
+#
+
+   # pi — ratio of a circle's circumference to its diameter
+   # Type: float | Value: 3.141592653589793
+pi = __pi__;
+
+# e — Euler's number, base of the natural logarithm
+# Type: float | Value: 2.718281828459045
+e = __e__;
+
+# tau — equal to 2 * pi, one full turn in radians
+# Type: float | Value: 6.283185307179586
+tau = __tau__;
+
+# inf — floating point positive infinity
+# Type: float | Value: inf
+inf = __inf__;
+
+
+# ── Powers & Roots ─────────────────────────────────────────
+
+# sqrt(x) -> float
+# Returns the square root of x.
+# Raises ValueError if x < 0.
+# Example: m.sqrt(9.0)  -> 3.0
+func sqrt(x) : return __sqrt__(x);
+
+# cbrt(x) -> float
+# Returns the cube root of x.
+# Works for negative values: m.cbrt(-8.0) -> -2.0
+# Example: m.cbrt(27.0) -> 3.0
+func cbrt(x) : return __cbrt__(x);
+
+# pow(base, exp) -> float
+# Returns base raised to the power exp.
+# Example: m.pow(2.0, 10.0) -> 1024.0
+func pow(base, exp) : return __pow__(base, exp);
+
+# hypot(x, y) -> float
+# Returns sqrt(x^2 + y^2), the length of the hypotenuse
+# of a right triangle with legs x and y.
+# Example: m.hypot(3.0, 4.0) -> 5.0
+func hypot(x, y) : return __hypot__(x, y);
+
+# ── Exponential & Logarithm ────────────────────────────────
+
+# exp(x) -> float
+# Returns e raised to the power x.
+# Example: m.exp(1.0) -> 2.718281828459045
+func exp(x) : return __exp__(x);
+
+# log(x) -> float
+# Returns the natural logarithm (base e) of x.
+# Raises ValueError if x <= 0.
+# Example: m.log(m.e) -> 1.0
+func log(x) : return __log__(x, none);
+
+# log_base(x, b) -> float
+# Returns the logarithm of x in the given base b.
+# Raises ValueError if x <= 0 or b <= 0 or b == 1.
+# Example: m.log_base(8.0, 2.0) -> 3.0
+func log_base(x, b) : return __log__(x, b);
+
+# log2(x) -> float
+# Returns the base-2 logarithm of x.
+# Raises ValueError if x <= 0.
+# Example: m.log2(8.0) -> 3.0
+func log2(x) : return __log2__(x);
+
+# log10(x) -> float
+# Returns the base-10 logarithm of x.
+# Raises ValueError if x <= 0.
+# Example: m.log10(1000.0) -> 3.0
+func log10(x) : return __log10__(x);
+
+# ── Trigonometry ───────────────────────────────────────────
+# All trig functions expect angles in radians.
+# Use m.radians() to convert from degrees first.
+
+# sin(x) -> float
+# Returns the sine of x (x in radians).
+# Example: m.sin(m.pi / 2.0) -> 1.0
+func sin(x) : return __sin__(x);
+
+# cos(x) -> float
+# Returns the cosine of x (x in radians).
+# Example: m.cos(0.0) -> 1.0
+func cos(x) : return __cos__(x);
+
+# tan(x) -> float
+# Returns the tangent of x (x in radians).
+# Example: m.tan(m.pi / 4.0) -> 1.0
+func tan(x) : return __tan__(x);
+
+# asin(x) -> float
+# Returns the arc sine of x in radians.
+# x must be in the range [-1, 1].
+# Raises ValueError if x is out of range.
+# Example: m.asin(1.0) -> 1.5707963... (pi/2)
+func asin(x) : return __asin__(x);
+
+# acos(x) -> float
+# Returns the arc cosine of x in radians.
+# x must be in the range [-1, 1].
+# Raises ValueError if x is out of range.
+# Example: m.acos(1.0) -> 0.0
+func acos(x) : return __acos__(x);
+
+# atan(x) -> float
+# Returns the arc tangent of x in radians.
+# Result is in the range [-pi/2, pi/2].
+# Example: m.atan(1.0) -> 0.7853981... (pi/4)
+func atan(x) : return __atan__(x);
+
+# atan2(y, x) -> float
+# Returns the arc tangent of y/x in radians.
+# Unlike atan(), handles all four quadrants correctly.
+# Result is in the range [-pi, pi].
+# Example: m.atan2(1.0, 1.0) -> 0.7853981... (pi/4)
+func atan2(y, x) : return __atan2__(y, x);
+
+# ── Rounding ───────────────────────────────────────────────
+
+# floor(x) -> int
+# Returns the largest integer less than or equal to x.
+# Example: m.floor(3.7)  ->  3
+# Example: m.floor(-3.7) -> -4
+func floor(x) : return __floor__(x);
+
+# ceil(x) -> int
+# Returns the smallest integer greater than or equal to x.
+# Example: m.ceil(3.2)  ->  4
+# Example: m.ceil(-3.2) -> -3
+func ceil(x) : return __ceil__(x);
+
+# round(x) -> int
+# Rounds x to the nearest integer.
+# Halfway values round away from zero.
+# Example: m.round(3.5) -> 4
+# Example: m.round(3.4) -> 3
+func round(x) : return __round__(x, none);
+
+# round_to(x, digits) -> float
+# Rounds x to the given number of decimal places.
+# Example: m.round_to(3.14159, 2) -> 3.14
+func round_to(x, digits) : return __round__(x, digits);
+
+# ── Angle Conversion ───────────────────────────────────────
+
+# degrees(x) -> float
+# Converts angle x from radians to degrees.
+# Example: m.degrees(m.pi) -> 180.0
+func degrees(x) : return __degrees__(x);
+
+# radians(x) -> float
+# Converts angle x from degrees to radians.
+# Example: m.radians(180.0) -> 3.141592653589793
+func radians(x) : return __radians__(x);

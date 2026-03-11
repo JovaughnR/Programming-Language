@@ -2,41 +2,105 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include "y.tab.h"
-#include "../lib/type.h"
-#include "../lib/maloc.h"
-#include "../lib/error.h"
 
-// Indentation stack
-typedef struct {
-   int levels[100];
-   int top;
-} IndentStack;
+#include "../main.h"
 
-IndentStack indent_stack = {{0}, 1};
-int pending_dedents = 0;
-int at_line_start = 1;
-int column = 0;
-
-int get_indent_level(char *text, int len) 
-{
-  int spaces = 0;
-  for (int i = 0; i < len; i++) {
-    if (text[i] == '\t') 
-        spaces += 4;
-    else 
-        spaces++;
-  }
-  return spaces;
-}
+#include "../core/lib/type.h"
+#include "../core/lib/maloc.h"
+#include "../core/lib/error.h"
 
 #define YY_USER_ACTION column += yyleng;
+int column = 0;
+
+static char *process_escapes(const char *src, int len)
+{
+   char *result = malloc(len + 1);
+   int i = 0, j = 0;
+
+   while (i < len)
+   {
+      if (src[i] == '\\' && i + 1 < len)
+      {
+         i++;
+         switch (src[i])
+         {
+         case 'n':  result[j++] = '\n'; break;
+         case 't':  result[j++] = '\t'; break;
+         case 'r':  result[j++] = '\r'; break;
+         case '\\': result[j++] = '\\'; break;
+         case '\'': result[j++] = '\''; break;
+         case '"':  result[j++] = '"';  break;
+         case 'a':  result[j++] = '\a'; break;
+         case 'b':  result[j++] = '\b'; break;
+         case 'f':  result[j++] = '\f'; break;
+         case 'v':  result[j++] = '\v'; break;
+         case '0':  result[j++] = '\0'; break;
+         case 'x':
+         {
+            // Hex escape \xNN
+            if (i + 2 < len && isxdigit(src[i+1]) && isxdigit(src[i+2]))
+            {
+               char hex[3] = { src[i+1], src[i+2], '\0' };
+               result[j++] = (char)strtol(hex, NULL, 16);
+               i += 2;
+            }
+            else
+               result[j++] = 'x';
+            break;
+         }
+         case 'u':
+         {
+            // Unicode escape \uNNNN — store as UTF-8
+            if (i + 4 < len)
+            {
+               char hex[5] = { src[i+1], src[i+2], src[i+3], src[i+4], '\0' };
+               unsigned int codepoint = (unsigned int)strtol(hex, NULL, 16);
+               if (codepoint < 0x80)
+                  result[j++] = (char)codepoint;
+               else if (codepoint < 0x800)
+               {
+                  result[j++] = (char)(0xC0 | (codepoint >> 6));
+                  result[j++] = (char)(0x80 | (codepoint & 0x3F));
+               }
+               else
+               {
+                  result[j++] = (char)(0xE0 | (codepoint >> 12));
+                  result[j++] = (char)(0x80 | ((codepoint >> 6) & 0x3F));
+                  result[j++] = (char)(0x80 | (codepoint & 0x3F));
+               }
+               i += 4;
+            }
+            break;
+         }
+         default:
+            // Unknown escape — keep as-is
+            result[j++] = '\\';
+            result[j++] = src[i];
+            break;
+         }
+      }
+      else
+         result[j++] = src[i];
+      i++;
+   }
+
+   result[j] = '\0';
+   return result;
+}
+
+YY_BUFFER_STATE get_current_buffer(void) {
+    return YY_CURRENT_BUFFER;
+}
 %}
 
 %option noyywrap
 %option yylineno
 %option nounput
 %option noinput
+
+%x AFTER_SEMI
 
 DIGIT       [0-9]
 LETTER      [_a-zA-Z]
@@ -45,176 +109,55 @@ INT         {DIGIT}+
 FLOAT       {DIGIT}+"."{DIGIT}+
 STRING_DQ   \"([^"\\]|\\.)*\"
 STRING_SQ   \'([^'\\]|\\.)*\'
+FSTRING_DQ   f\"([^"\\]|\\.)*\"
+FSTRING_SQ   f\'([^'\\]|\\.)*\'
 
 %%
 
-   /* Handle pending DEDENT tokens */
-%{
-   if (pending_dedents > 0) {
-      pending_dedents--;
-      return DEDENT;
-   }
-%}
+   /* Newlines - returned as NL for statement termination */
+\n          { column = 0; BEGIN(AFTER_SEMI); }
 
-   /* Empty lines - keep them simple */
-^[ \t]*\n {
-   at_line_start = 1;
-   return NL;
-}
-
-   /* Indented line - match indent + first char of content */
-^[ \t]+[^ \t\n] {
-
-   if (at_line_start) {
-      at_line_start = 0;
-      
-      /* Find where the actual content starts */
-      int indent_len = 0;
-      while (yytext[indent_len] == ' ' || yytext[indent_len] == '\t') {
-         indent_len++;
-      }
-      
-      int new_level = get_indent_level(yytext, indent_len);
-      int current_level = indent_stack.levels[indent_stack.top - 1];
-      
-      if (new_level > current_level) {
-         if (indent_stack.top >= 100) {
-            exit(1);
-         }
-         indent_stack.levels[indent_stack.top++] = new_level;
-         
-         /* Put back everything after the indent */
-         yyless(indent_len);
-         return INDENT;
-         
-      } else if (new_level < current_level) {
-         while (indent_stack.top > 1 && 
-               indent_stack.levels[indent_stack.top - 1] > new_level) {
-            indent_stack.top--;
-            pending_dedents++;
-         }
-         
-         
-         if (indent_stack.levels[indent_stack.top - 1] != new_level) {
-            fprintf(stderr, "ERROR: Indentation mismatch!\n");
-            exit(1);
-         }
-         /* Put back everything */
-         yyless(0);
-         at_line_start = 1; // Keep it so the dedent logic works
-         
-         if (pending_dedents > 0) {
-            pending_dedents--;
-            return DEDENT;
-         }
-      } else {
-         /* Same level - put back everything after indent */
-         yyless(indent_len);
-      }
-   }
-}
-
-   /* Non-indented line when we're indented - need dedents */
-^[a-zA-Z_#][a-zA-Z0-9_]* {
-   if (at_line_start && indent_stack.top > 1) {
-      /* We need to dedent back to base level */
-      while (indent_stack.top > 1) {
-         indent_stack.top--;
-         pending_dedents++;
-      }
-      
-      /* Put the entire word back */
-      yyless(0);
-      
-      if (pending_dedents > 0) {
-         pending_dedents--;
-         return DEDENT;
-      }
-   }
-   
-   /* Not at line start or no dedents needed, put it back to be matched by other rules */
-   yyless(0);
-}
-
-   /* Regular newline */
-\n {
-   at_line_start = 1;
-   column = 0;
-   return NL;
-}
-
-   /* Keywords - elif and else need special handling for dedents */
-"func"       { at_line_start = 0; return FUNCTION; }
-"class"      { at_line_start = 0; return CLASS; }
-"return"     { at_line_start = 0; return RETURN; }
-"try"        { at_line_start = 0; return TRY; }
-"catch"      { at_line_start = 0; return CATCH; }
-"finally"     { at_line_start = 0; return FINALLY; }
-"continue"   { at_line_start = 0; return CONTINUE; }
-"break"      { at_line_start = 0; return BREAK; }
-"import"     { at_line_start = 0; return IMPORT; }
-"from"       { at_line_start = 0; return FROM; }
-"as"         { at_line_start = 0; return AS; }
-"pass"       { at_line_start = 0; return PASS; }
-"if"         { at_line_start = 0; return IF; }
-"elif"       { 
-   /* If we're at the start of a line and indented, need to dedent first */
-   if (at_line_start && indent_stack.levels[indent_stack.top - 1] > 0) {
-      at_line_start = 0;
-      /* Generate dedents back to base level */
-      while (indent_stack.top > 1) {
-         indent_stack.top--;
-         pending_dedents++;
-      }
-      /* Put the keyword back */
-      yyless(0);
-      if (pending_dedents > 0) {
-         pending_dedents--;
-         return DEDENT;
-      }
-   }
-   at_line_start = 0;
-   return ELIF;
-}
-"else"       { 
-   /* If we're at the start of a line and indented, need to dedent first */
-   if (at_line_start && indent_stack.levels[indent_stack.top - 1] > 0) {
-      at_line_start = 0;
-      /* Generate dedents back to base level */
-      while (indent_stack.top > 1) {
-         indent_stack.top--;
-         pending_dedents++;
-      }
-      /* Put the keyword back */
-      yyless(0);
-      if (pending_dedents > 0) {
-         pending_dedents--;
-         return DEDENT;
-      }
-   }
-   at_line_start = 0;
-   return ELSE;
-}
-"while"      { at_line_start = 0; return WHILE; }
-"for"        { at_line_start = 0; return FOR; }
-"global"     { at_line_start = 0; return GLOBAL; }
-"nonlocal"   { at_line_start = 0; return NONLOCAL; }
+<AFTER_SEMI>[ \t\r]+   { /* skip whitespace */ }
+<AFTER_SEMI>else       { BEGIN(INITIAL); return ELSE; }
+<AFTER_SEMI>elif       { BEGIN(INITIAL); return ELIF; }
+<AFTER_SEMI>catch      { BEGIN(INITIAL); return CATCH; }
+<AFTER_SEMI>finally     { BEGIN(INITIAL); return FINALLY; }
+<AFTER_SEMI>as         { BEGIN(INITIAL); return AS; }        /* ← add this */
+<AFTER_SEMI>\n         { BEGIN(INITIAL); return NL; }
+<AFTER_SEMI>.          { BEGIN(INITIAL); yyless(0); return NL; }
 
 
-   /* Delimiters */
-"("   { return '('; }
-")"   { return ')'; }
-"["   { return '['; }
-"]"   { return ']'; }
-"{"   { return '{'; }
-"}"   { return '}'; }
-":"   { return ':'; }
-","   { return ','; }
-"."   { return '.'; }
-"="   { return '='; }
+   /* Block delimiters */
+"{"         { return LBRACE; }
+"}"         { return RBRACE; }
 
-"none" { return NONE; }
+";"         { return ';'; }
 
+   /* Keywords */
+"func"       { return FUNC; }
+"class"      { return CLASS; }
+"enum"       { return ENUM; }
+"return"     { return RETURN; }
+"try"        { return TRY; }
+"catch"      { return CATCH; }
+"finally"     { return FINALLY; }
+"throw"      { return THROW; }
+"async"      { return ASYNC; }
+"await"      { return AWAIT; }
+"continue"   { return CONTINUE; }
+"break"      { return BREAK; }
+"import"     { return IMPORT; }
+"from"       { return FROM; }
+"as"         { return AS; }
+"if"         { return IF; }
+"elif"       { return ELIF; }
+"else"       { return ELSE; }
+"while"      { return WHILE; }
+"for"        { return FOR; }
+"global"     { return GLOBAL; }
+"nonlocal"   { return NONLOCAL; }
+"lambda"     { return LAMBDA; }
+"none"       { return NONE; }
 
    /* Boolean literals */
 "true" {
@@ -231,13 +174,13 @@ STRING_SQ   \'([^'\\]|\\.)*\'
 
    /* Logical operators */
 "and" {
-   yylval.generic = createASTop(LOGICAL_AND);
-   return LOGIC_AND;
+   yylval.generic = createASTop(AND);
+   return LAND;
 }
 
 "or" {
-   yylval.generic = createASTop(LOGICAL_OR);
-   return LOGIC_OR;
+   yylval.generic = createASTop(OR);
+   return LOR;
 }
 
 "not" {
@@ -256,36 +199,46 @@ STRING_SQ   \'([^'\\]|\\.)*\'
 ">"  { yylval.generic = createASTop(GRT);   return GT; }
 
    /* Bitwise operators */
-"<<"  { yylval.generic = createASTop(LEFT_SHIFT);  return L_SHIFT; }
-">>"  { yylval.generic = createASTop(RIGHT_SHIFT); return R_SHIFT; }
+"<<"  { yylval.generic = createASTop(LEFT_SHIFT);  return LSHIFT; }
+">>"  { yylval.generic = createASTop(RIGHT_SHIFT); return RSHIFT; }
 "&"   { yylval.generic = createASTop(BIT_AND);     return BITAND; }
 "|"   { yylval.generic = createASTop(BIT_OR);      return BITOR; }
 "^"   { yylval.generic = createASTop(XOR);         return BITXOR; }
 "~"   { yylval.generic = createASTop(BIT_NOT);     return BITNOT; }
 
-
    /* Arithmetic operators */
-"+"   { yylval.generic = createASTop(PLUS);      return ADD; }
-"-"   { yylval.generic = createASTop(MINUS);     return SUB; }
-"*"   { yylval.generic = createASTop(MULTIPLY);  return MUL; }
-"/"   { yylval.generic = createASTop(DIVIDE);    return DIV; }
-"%"   { yylval.generic = createASTop(MODULO);    return MOD; }
-"//"  { yylval.generic = createASTop(FLOOR);     return FLDIV; }
-"**"  { yylval.generic = createASTop(EXPONENT);  return EXP; }
+"+"   { yylval.generic = createASTop(ADD);       return PLUS; }
+"-"   { yylval.generic = createASTop(SUB);       return MINUS; }
+"*"   { yylval.generic = createASTop(MUL);       return STAR; }
+"/"   { yylval.generic = createASTop(DIV);       return DIVIDE; }
+"%"   { yylval.generic = createASTop(MOD);       return MODULO; }
+"//"  { yylval.generic = createASTop(FLDIV);     return FLOOR; }
+"**"  { yylval.generic = createASTop(EXP);       return EXPONENT; }
 
    /* Compound assignment operators */
-"+="   { yylval.generic = createASTop(PLUS);        return PLUS_EQ; }
-"-="   { yylval.generic = createASTop(MINUS);       return MINUS_EQ; }
-"*="   { yylval.generic = createASTop(MULTIPLY);    return MUL_EQ; }
-"/="   { yylval.generic = createASTop(DIVIDE);      return DIV_EQ; }
-"%="   { yylval.generic = createASTop(MODULO);      return MOD_EQ; }
-"//="  { yylval.generic = createASTop(FLOOR);       return FLDIV_EQ; }
-"**="  { yylval.generic = createASTop(EXPONENT);    return EXP_EQ; }
+"+="   { yylval.generic = createASTop(ADD);         return PLUS_EQ; }
+"-="   { yylval.generic = createASTop(SUB);         return MINUS_EQ; }
+"*="   { yylval.generic = createASTop(MUL);         return MUL_EQ; }
+"/="   { yylval.generic = createASTop(DIV);         return DIV_EQ; }
+"%="   { yylval.generic = createASTop(MOD);         return MOD_EQ; }
+"//="  { yylval.generic = createASTop(FLDIV);       return FLDIV_EQ; }
+"**="  { yylval.generic = createASTop(EXP);         return EXP_EQ; }
 "<<="  { yylval.generic = createASTop(LEFT_SHIFT);  return L_SHIFT_EQ; }
 ">>="  { yylval.generic = createASTop(RIGHT_SHIFT); return R_SHIFT_EQ; }
 "&="   { yylval.generic = createASTop(BIT_AND);     return AND_EQ; }
 "|="   { yylval.generic = createASTop(BIT_OR);      return OR_EQ; }
 "^="   { yylval.generic = createASTop(XOR);         return XOR_EQ; }
+
+   /* Delimiters */
+")"   { return ')'; }
+"("   { return '('; }
+"["   { return '['; }
+"]"   { return ']'; }
+","   { return ','; }
+":"   { return ':'; }
+"?"   { return QMARK; }
+"."   { return '.'; }
+"="   { return '='; }
 
    /* Numbers */
 {FLOAT} {
@@ -303,69 +256,40 @@ STRING_SQ   \'([^'\\]|\\.)*\'
    /* Strings */
 {STRING_DQ}|{STRING_SQ} {
    int len = yyleng - 2;
-   char *content = malloc(len + 1);
-   if (!content) {
-      fprintf(stderr, "Lexer error: Out of memory\n");
-      exit(1);
-   }
-   strncpy(content, yytext + 1, len);
-   content[len] = '\0';
+   char *raw = malloc(len + 1);
+   if (!raw) { fprintf(stderr, "Lexer error: Out of memory\n"); exit(1); }
+   strncpy(raw, yytext + 1, len);
+   raw[len] = '\0';
+
+   char *content = process_escapes(raw, len);
+   free(raw);
+
    yylval.generic = createASTnode(createData(TYPE_STR, content));
    free(content);
    return STRING;
 }
 
+{FSTRING_DQ}|{FSTRING_SQ} {
+   int len = yyleng - 3;
+   char *content = malloc(len + 1);
+   strncpy(content, yytext + 2, len);
+   content[len] = '\0';
+   yylval.generic = createASTnode(createData(TYPE_FSTRING, content));
+   free(content);
+   return FSTRING;
+}
    /* Identifiers */
 {IDENT} {
-   /* Check if we need to dedent before returning this token */
-   if (at_line_start && indent_stack.levels[indent_stack.top - 1] > 0) {
-      at_line_start = 0;
-      
-      /* Generate dedents back to base level */
-      while (indent_stack.top > 1) {
-         indent_stack.top--;
-         pending_dedents++;
-      }
-      
-      /* Put the identifier back so it can be parsed after dedents */
-      yyless(0);
-      
-      /* Return first DEDENT */
-      if (pending_dedents > 0) {
-         pending_dedents--;
-         return DEDENT;
-      }
-   }
-   
-   at_line_start = 0;
    yylval.generic = strdup(yytext);
-   return VARIABLE;
+   return IDENT;
 }
 
-   /* Whitespace (not newlines) */
-[ \r\t]+ { /* Skip */ }
+   /* Whitespace and comments - skip */
+[ \t\r]+    { /* skip */ }
+#.*         { /* skip comments */ }
 
-   /* Comments */
-#.*  { /* Ignore comments */ }
-
-   /* EOF handling */
+   /* EOF */
 <<EOF>> {
-   /* If we're not at the start of a line, emit a NEWLINE first */
-   if (!at_line_start) {
-      at_line_start = 1;
-      return NL;
-   }
-   
-   if (pending_dedents > 0) {
-      pending_dedents--;
-      return DEDENT;
-   }
-   
-   if (indent_stack.top > 1) {
-      indent_stack.top--;
-      return DEDENT;
-   }
-   
    yyterminate();
 }
 
@@ -375,4 +299,5 @@ STRING_SQ   \'([^'\\]|\\.)*\'
    throw_error(ERROR_SYNTAX, "unexpected character '%s'\n", yytext);
    exit(1);
 }
+
 %%

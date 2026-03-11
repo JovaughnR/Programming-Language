@@ -1,0 +1,59 @@
+# ============================================================
+#  log.cx — Log Module
+#  Structured logging with levels, colors, and file output.
+#
+#  Usage:
+#     import log;
+#     log.info("server started");
+#     log.setlevel("warn");
+# ============================================================
+
+# debug(message) -> none
+# Logs at DEBUG level (cyan). Lowest priority level.
+# Example: log.debug("entering function foo")
+func debug(msg) : return __log_debug__(msg);
+
+# info(message) -> none
+# Logs at INFO level (green). General information.
+# Example: log.info("server started on port 8080")
+func info(msg) : return __log_info__(msg);
+
+# warn(message) -> none
+# Logs at WARN level (yellow). Something unexpected but recoverable.
+# Example: log.warn("config missing, using defaults")
+func warn(msg) : return __log_warn__(msg);
+
+# error(message) -> none
+# Logs at ERROR level (red). Something failed.
+# Example: log.error("database connection failed")
+func error(msg) : return __log_error__(msg);
+
+# fatal(message) -> none
+# Logs at FATAL level (magenta) then exits with code 1.
+# Example: log.fatal("unrecoverable error")
+func fatal(msg) : return __log_fatal__(msg);
+
+# setlevel(level) -> none
+# Sets minimum log level. Levels: "debug", "info", "warn", "error", "fatal", "off"
+# Example: log.setlevel("warn")  # suppresses debug and info
+# Example: log.setlevel("off")   # suppresses everything
+func setlevel(level) : return __log_setlevel__(level);
+
+# setfile(path) -> none
+# Redirects log output to a file. Pass none to revert to stderr.
+# Example: log.setfile("app.log")
+# Example: log.setfile(none)
+func setfile(path) : return __log_setfile__(path);
+
+# setformat(format) -> none
+# Sets output format: "plain", "standard", or "full".
+# plain    -> "message"
+# standard -> "[LEVEL] message"
+# full     -> "2024-01-01 12:00:00 [LEVEL] message"
+# Example: log.setformat("full")
+func setformat(fmt) : return __log_setformat__(fmt);
+
+# close() -> none
+# Closes the log file if one is open.
+# Example: log.close()
+func close() : return __log_close__();

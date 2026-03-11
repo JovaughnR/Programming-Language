@@ -1,0 +1,56 @@
+# ============================================================
+#  sys.cx — Sys Module
+#  Public interface for system and interpreter information.
+#
+#  Usage:
+#     import sys;
+#     print(sys.platform());
+#     print(sys.args());
+# ============================================================
+
+# args() -> list
+# Returns command line arguments passed to the script.
+# args[0] is the script name, args[1..] are user arguments.
+# Example: ./interpreter script.cx hello world
+#          sys.args() -> ["script.cx", "hello", "world"]
+func args() : return __sys_args__();
+
+# exit(code=0) -> none
+# Exits the program with the given exit code.
+# Example: sys.exit()    # clean exit
+# Example: sys.exit(1)   # exit with error code
+func exit(code = 0) : return __sys_exit__(code);
+
+# platform() -> str
+# Returns the current operating system.
+# Possible values: "macos", "linux", "windows", "unknown"
+# Example: sys.platform() -> "macos"
+func platform() : return __sys_platform__();
+
+# version() -> str
+# Returns the CX language version string.
+# Example: sys.version() -> "cx 1.0.0"
+func version() : return __sys_version__();
+
+# getpid() -> int
+# Returns the current process ID.
+# Example: sys.getpid() -> 12345
+func getpid() : return __sys_getpid__();
+
+# stdin() -> file
+# Returns a file handle to standard input.
+# Use with io.readline() to read user input.
+# Example: line = io.readline(sys.stdin())
+func stdin() : return __sys_stdin__();
+
+# stdout() -> file
+# Returns a file handle to standard output.
+# Use with io.write() to write to stdout explicitly.
+# Example: io.write(sys.stdout(), "hello")
+func stdout() : return __sys_stdout__();
+
+# stderr() -> file
+# Returns a file handle to standard error.
+# Use for error messages that should not go to stdout.
+# Example: io.write(sys.stderr(), "something went wrong")
+func stderr() : return __sys_stderr__();

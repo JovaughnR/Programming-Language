@@ -39,149 +39,167 @@
    /* Put the tokens into the symbol table, so that GDB and other debuggers
       know about them.  */
    enum yytokentype {
-     INDENT = 258,
-     DEDENT = 259,
-     FROM = 260,
-     PASS = 261,
-     CLASS = 262,
-     IMPORT = 263,
-     AS = 264,
-     FUNCTION = 265,
-     NL = 266,
-     RETURN = 267,
-     CONTINUE = 268,
-     BREAK = 269,
-     TRY = 270,
-     CATCH = 271,
-     FINALLY = 272,
-     WHILE = 273,
-     FOR = 274,
-     IF = 275,
-     ELIF = 276,
-     ELSE = 277,
-     GLOBAL = 278,
-     NONLOCAL = 279,
-     VARIABLE = 280,
-     STRING = 281,
-     INTEGER = 282,
-     DECIMAL = 283,
-     ADD = 284,
-     SUB = 285,
-     MUL = 286,
-     DIV = 287,
-     MOD = 288,
-     FLDIV = 289,
-     EXP = 290,
-     BITAND = 291,
-     BITOR = 292,
-     BITXOR = 293,
-     L_SHIFT = 294,
-     R_SHIFT = 295,
-     BITNOT = 296,
-     PLUS_EQ = 297,
-     MINUS_EQ = 298,
-     DIV_EQ = 299,
-     MUL_EQ = 300,
-     MOD_EQ = 301,
-     L_SHIFT_EQ = 302,
-     R_SHIFT_EQ = 303,
-     XOR_EQ = 304,
-     FLDIV_EQ = 305,
-     EXP_EQ = 306,
-     AND_EQ = 307,
-     OR_EQ = 308,
-     TRUE = 309,
-     FALSE = 310,
-     NONE = 311,
-     LOGIC_AND = 312,
-     LOGIC_OR = 313,
-     INVERT = 314,
-     EQ = 315,
-     NE = 316,
-     LT = 317,
-     GT = 318,
-     GE = 319,
-     LE = 320,
-     IN = 321
+     IMPORT = 258,
+     AS = 259,
+     LAMBDA = 260,
+     QMARK = 261,
+     FUNC = 262,
+     NL = 263,
+     RETURN = 264,
+     THROW = 265,
+     TRY = 266,
+     CATCH = 267,
+     FINALLY = 268,
+     WHILE = 269,
+     FOR = 270,
+     CONTINUE = 271,
+     BREAK = 272,
+     IF = 273,
+     ELIF = 274,
+     ELSE = 275,
+     GLOBAL = 276,
+     NONLOCAL = 277,
+     ENUM = 278,
+     LBRACE = 279,
+     RBRACE = 280,
+     FROM = 281,
+     CLASS = 282,
+     SWITCH = 283,
+     CASE = 284,
+     DEFAULT = 285,
+     ASYNC = 286,
+     AWAIT = 287,
+     IDENT = 288,
+     STRING = 289,
+     INTEGER = 290,
+     DECIMAL = 291,
+     LSHIFT = 292,
+     RSHIFT = 293,
+     PLUS = 294,
+     MINUS = 295,
+     STAR = 296,
+     DIVIDE = 297,
+     MODULO = 298,
+     FLOOR = 299,
+     EXPONENT = 300,
+     BITAND = 301,
+     BITOR = 302,
+     BITXOR = 303,
+     MINUS_EQ = 304,
+     DIV_EQ = 305,
+     BITNOT = 306,
+     MUL_EQ = 307,
+     MOD_EQ = 308,
+     LE = 309,
+     IN = 310,
+     EXP_EQ = 311,
+     FLDIV_EQ = 312,
+     R_SHIFT_EQ = 313,
+     XOR_EQ = 314,
+     NONE = 315,
+     AND_EQ = 316,
+     OR_EQ = 317,
+     TRUE = 318,
+     FALSE = 319,
+     LAND = 320,
+     PLUS_EQ = 321,
+     INVERT = 322,
+     EQ = 323,
+     NE = 324,
+     LT = 325,
+     GT = 326,
+     GE = 327,
+     LOR = 328,
+     FSTRING = 329,
+     L_SHIFT_EQ = 330
    };
 #endif
 /* Tokens.  */
-#define INDENT 258
-#define DEDENT 259
-#define FROM 260
-#define PASS 261
-#define CLASS 262
-#define IMPORT 263
-#define AS 264
-#define FUNCTION 265
-#define NL 266
-#define RETURN 267
-#define CONTINUE 268
-#define BREAK 269
-#define TRY 270
-#define CATCH 271
-#define FINALLY 272
-#define WHILE 273
-#define FOR 274
-#define IF 275
-#define ELIF 276
-#define ELSE 277
-#define GLOBAL 278
-#define NONLOCAL 279
-#define VARIABLE 280
-#define STRING 281
-#define INTEGER 282
-#define DECIMAL 283
-#define ADD 284
-#define SUB 285
-#define MUL 286
-#define DIV 287
-#define MOD 288
-#define FLDIV 289
-#define EXP 290
-#define BITAND 291
-#define BITOR 292
-#define BITXOR 293
-#define L_SHIFT 294
-#define R_SHIFT 295
-#define BITNOT 296
-#define PLUS_EQ 297
-#define MINUS_EQ 298
-#define DIV_EQ 299
-#define MUL_EQ 300
-#define MOD_EQ 301
-#define L_SHIFT_EQ 302
-#define R_SHIFT_EQ 303
-#define XOR_EQ 304
-#define FLDIV_EQ 305
-#define EXP_EQ 306
-#define AND_EQ 307
-#define OR_EQ 308
-#define TRUE 309
-#define FALSE 310
-#define NONE 311
-#define LOGIC_AND 312
-#define LOGIC_OR 313
-#define INVERT 314
-#define EQ 315
-#define NE 316
-#define LT 317
-#define GT 318
-#define GE 319
-#define LE 320
-#define IN 321
+#define IMPORT 258
+#define AS 259
+#define LAMBDA 260
+#define QMARK 261
+#define FUNC 262
+#define NL 263
+#define RETURN 264
+#define THROW 265
+#define TRY 266
+#define CATCH 267
+#define FINALLY 268
+#define WHILE 269
+#define FOR 270
+#define CONTINUE 271
+#define BREAK 272
+#define IF 273
+#define ELIF 274
+#define ELSE 275
+#define GLOBAL 276
+#define NONLOCAL 277
+#define ENUM 278
+#define LBRACE 279
+#define RBRACE 280
+#define FROM 281
+#define CLASS 282
+#define SWITCH 283
+#define CASE 284
+#define DEFAULT 285
+#define ASYNC 286
+#define AWAIT 287
+#define IDENT 288
+#define STRING 289
+#define INTEGER 290
+#define DECIMAL 291
+#define LSHIFT 292
+#define RSHIFT 293
+#define PLUS 294
+#define MINUS 295
+#define STAR 296
+#define DIVIDE 297
+#define MODULO 298
+#define FLOOR 299
+#define EXPONENT 300
+#define BITAND 301
+#define BITOR 302
+#define BITXOR 303
+#define MINUS_EQ 304
+#define DIV_EQ 305
+#define BITNOT 306
+#define MUL_EQ 307
+#define MOD_EQ 308
+#define LE 309
+#define IN 310
+#define EXP_EQ 311
+#define FLDIV_EQ 312
+#define R_SHIFT_EQ 313
+#define XOR_EQ 314
+#define NONE 315
+#define AND_EQ 316
+#define OR_EQ 317
+#define TRUE 318
+#define FALSE 319
+#define LAND 320
+#define PLUS_EQ 321
+#define INVERT 322
+#define EQ 323
+#define NE 324
+#define LT 325
+#define GT 326
+#define GE 327
+#define LOR 328
+#define FSTRING 329
+#define L_SHIFT_EQ 330
 
 
 
 
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 typedef union YYSTYPE
-#line 42 "./parse/parser.y"
+#line 31 "./parse/parser.y"
 {
    void *generic;
 }
 /* Line 1529 of yacc.c.  */
-#line 185 "y.tab.h"
+#line 203 "y.tab.h"
 	YYSTYPE;
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
 # define YYSTYPE_IS_DECLARED 1

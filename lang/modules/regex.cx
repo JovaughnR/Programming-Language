@@ -1,0 +1,41 @@
+# ============================================================
+#  regex.cx — Regex Module
+#  Public interface for regular expression operations.
+#  Uses POSIX extended regular expressions (ERE).
+#
+#  Usage:
+#     import regex as re;
+#     print(regex.test("\\d+", "abc123"));
+# ============================================================
+
+# test(pattern, string) -> bool
+# Returns true if pattern matches anywhere in string.
+# Example: re.test("\\d+", "abc123")  -> true
+# Example: re.test("^\\d+$", "abc")   -> false
+func test(pattern, string) : return __re_test__(pattern, string);
+
+# match(pattern, string) -> str | none
+# Returns the first match anchored to the start, or none.
+# Example: re.match("\\d+", "123abc") -> "123"
+# Example: re.match("\\d+", "abc123") -> none
+func match(pattern, string) : return __re_match__(pattern, string);
+
+# search(pattern, string) -> str | none
+# Returns the first match found anywhere in string, or none.
+# Example: re.search("\\d+", "abc123def") -> "123"
+func search(pattern, string) : return __re_search__(pattern, string);
+
+# findall(pattern, string) -> list
+# Returns a list of all non-overlapping matches.
+# Example: re.findall("\\d+", "a1b22c333") -> ["1", "22", "333"]
+func findall(pattern, string) : return __re_findall__(pattern, string);
+
+# replace(pattern, replacement, string) -> str
+# Replaces all matches of pattern with replacement string.
+# Example: re.replace("\\d+", "#", "a1b22c333") -> "a#b#c#"
+func replace(pattern, replacement, string) : return __re_replace__(pattern, replacement, string);
+
+# split(pattern, string) -> list
+# Splits string at every match of pattern.
+# Example: re.split("\\s+", "hello   world  cx") -> ["hello", "world", "cx"]
+func split(pattern, string) : return __re_split__(pattern, string);

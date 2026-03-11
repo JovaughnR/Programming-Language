@@ -1,0 +1,14 @@
+class Animal {
+    func __struct__(this, name, sound) {
+        this.name = name;
+        this.sound = sound;
+    }
+
+    func speak(this) {
+        return this.name + " says " + this.sound;
+    }
+}
+
+a = Animal("Cat", "meow");
+print(a.speak());
+print(a.name);

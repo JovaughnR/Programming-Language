@@ -1,0 +1,17 @@
+f = lambda x: x + 1;
+print(f(5));
+
+g = lambda x, y: x * y;
+print(g(3, 4));
+
+curried = lambda x : lambda y : lambda z : x + y + z;
+print(curried(2)(3)(1));
+
+
+per = lambda x : x * 100;
+
+func calculate_percentage(x, n, multiplier) {
+   return multiplier(x/n);
+}
+
+print(calculate_percentage(7, 10, per));

@@ -1,34 +1,168 @@
-class Animal:
-   function __struct__(this):
-      this.name = None
-      this.action_name = None
+class Animal {
+   func __struct__(this) {
+      this.name = none;
+      this.action_name = none;
+   }
 
-   function action(this):
-      print(this.name + " is " + this.action_name)
-
-
-class Dog(Animal):
-   function __struct__(this):
-      this.name = "Brooks"
-      this.color = "Brown"
-      this.action_name = "barking"
-
-   function action(this):
-      print(this.name + " is " + this.action_name)
+   func action(this) {
+      print(this.name + " is " + this.action_name);
+   }
+}
 
 
-class Cat(Animal):
-   function __struct__(this):
-      this.name = "Tom"
-      this.color = "grey"
-      this.action_name = "purring"
+class Dog(Animal) {
+   func __struct__(this) {
+      this.name = "Brooks";
+      this.color = "Brown";
+      this.action_name = "barking";
+   }
 
-   class Node:
-      function __struct__(self):
-         pass
-
-   function action(this):
-      print(this.name + " is " + this.action_name)
+   func action(this) { 
+      print(f"{this.name} is {this.action_name}");
+   }
+}
 
 
-print("hello world")
+class Cat(Animal) {
+   func __struct__(this) {
+      this.name = "Tom";
+      this.color = "grey";
+      this.action_name = "purring";
+   }
+
+   class Node {
+      func __struct__(self) {}
+   }
+
+   func action(this) {
+      print(f"{this.name} is {this.action_name}");
+   }
+}
+
+func add(x, y) : return x + y;
+
+
+func test(x, y="hello") : print(x, y);
+
+test(3, 4);
+
+import socket;
+
+s = socket.create("tcp");
+socket.connect(s, "127.0.0.1", 9000);
+print("connected to server");
+
+socket.send(s, "Hello from CX client!");
+response = socket.recv(s);
+print(f"server replied: {response}");
+
+socket.close(s);
+
+import thread;
+
+func worker(n) {
+    total = 0;
+    i = 0;
+    while (i < n) {
+        total = total + i;
+        i = i + 1;
+    }
+    return total;
+}
+
+# Basic thread test
+t1 = thread.create(worker, [100]);
+t2 = thread.create(worker, [200]);
+
+r1 = thread.join(t1);
+r2 = thread.join(t2);
+
+print(f"thread 1 result: {r1}");
+print(f"thread 2 result: {r2}");
+
+# Mutex test
+print("before mutex");
+m = thread.mutex_create();
+print("mutex created");
+thread.mutex_lock(m);
+print("mutex locked");
+thread.mutex_unlock(m);
+print("mutex unlocked");
+thread.mutex_destroy(m);
+print("mutex destroyed");
+
+# Sleep test
+print("sleeping 200ms...");
+thread.sleep(200);
+print("done sleeping");
+
+# Thread ID
+print(f"main thread id: {thread.id()}");
+print("all done");
+
+import net;
+
+async func fetch(url) {
+    res = net.get(url);
+    return res["status"];
+}
+
+async func fetch_body(url) {
+    res = net.get(url);
+    return res["body"];
+}
+
+# Launch two async tasks simultaneously
+print("launching async tasks...");
+f1 = fetch("https://httpbin.org/get");
+f2 = fetch("https://httpbin.org/status/200");
+
+# Await results
+s1 = await f1;
+s2 = await f2;
+
+print(f"status 1: {s1}");
+print(f"status 2: {s2}");
+
+# Sequential await
+print("fetching body...");
+body = await fetch_body("https://httpbin.org/json");
+print(f"got body length: {len(body)}");
+
+print("done");
+
+
+import http;
+import json;
+
+app = http.server();
+
+func handle_root(req, res) {
+    res["_body"] = json.stringify({"message": "hello world", "status": "ok"});
+    res["_status"] = 200;
+}
+
+func handle_user(req, res) {
+    id = req["params"]["id"];
+    res["_body"] = json.stringify({"user_id": id});
+    res["_status"] = 200;
+}
+
+func handle_echo(req, res) {
+    body = req["body"];
+    res["_body"] = json.stringify({"echo": body});
+    res["_status"] = 200;
+}
+
+func handle_health(req, res) {
+    res["_body"] = json.stringify({"healthy": true});
+    res["_status"] = 200;
+}
+
+http.get(app, "/", handle_root);
+http.get(app, "/users/:id", handle_user);
+http.post(app, "/echo", handle_echo);
+http.get(app, "/health", handle_health);
+
+http.listen(app, 8080); 
+print("Server listening on host 8000");

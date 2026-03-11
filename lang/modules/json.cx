@@ -1,0 +1,27 @@
+# ============================================================
+#  json.cx — JSON Module
+#  Public interface for JSON parsing and serialization.
+#
+#  Usage:
+#     import json;
+#     data = json.parse('{"name": "cx", "version": 1}');
+#     print(data["name"]);
+# ============================================================
+
+# parse(s) -> dict | list | str | int | float | bool | none
+# Parses a JSON string into a native CX value.
+# Supports objects, arrays, strings, numbers, booleans, and null.
+# Raises ValueError on invalid JSON.
+# Example: json.parse('{"a": 1}')       -> dict
+# Example: json.parse('[1, 2, 3]')      -> list
+# Example: json.parse('"hello"')        -> str
+# Example: json.parse('true')           -> bool
+func parse(s) : return __json_parse__(s);
+
+# stringify(value, indent=0) -> str
+# Converts a CX value to a JSON string.
+# Pass indent > 0 for pretty-printed output.
+# Supports dicts, lists, strings, ints, floats, bools, and none.
+# Example: json.stringify({"name": "cx"})    -> '{"name":"cx"}'
+# Example: json.stringify([1, 2, 3], 2)      -> pretty printed array
+func stringify(value, indent = 0) : return __json_stringify__(value, indent);

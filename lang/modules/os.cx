@@ -1,0 +1,64 @@
+# ============================================================
+#  os.cx — OS Module
+#  Public interface for OS and filesystem operations.
+#
+#  Usage:
+#     import os;
+#     print(os.getcwd());
+#     print(os.listdir("."));
+# ============================================================
+
+# exists(path) -> bool
+# Returns true if the path exists (file or directory).
+# Example: os.exists("test.cx") -> true
+func exists(path) : return __os_exists__(path);
+
+# isfile(path) -> bool
+# Returns true if path exists and is a regular file.
+# Example: os.isfile("test.cx") -> true
+func isfile(path) : return __os_isfile__(path);
+
+# isdir(path) -> bool
+# Returns true if path exists and is a directory.
+# Example: os.isdir("./modules") -> true
+func isdir(path) : return __os_isdir__(path);
+
+# listdir(path) -> list
+# Returns a list of all filenames in the given directory.
+# Does not include "." or "..".
+# Example: os.listdir(".") -> ["test.cx", "interpreter", ...]
+func listdir(path) : return __os_listdir__(path);
+
+# mkdir(path) -> bool
+# Creates a new directory at path.
+# Returns true on success, raises RuntimeError on failure.
+# Example: os.mkdir("output")
+func mkdir(path) : return __os_mkdir__(path);
+
+# remove(path) -> bool
+# Deletes a file at path.
+# Returns true on success, raises RuntimeError on failure.
+# Example: os.remove("old_file.txt")
+func remove(path) : return __os_remove__(path);
+
+# rename(src, dst) -> bool
+# Renames or moves a file from src to dst.
+# Returns true on success, raises RuntimeError on failure.
+# Example: os.rename("old.txt", "new.txt")
+func rename(src, dst) : return __os_rename__(src, dst);
+
+# getcwd() -> str
+# Returns the current working directory as a string.
+# Example: os.getcwd() -> "/Users/jovaughn/lang"
+func getcwd() : return __os_getcwd__();
+
+# getenv(name) -> str | none
+# Returns the value of an environment variable.
+# Returns none if the variable is not set.
+# Example: os.getenv("HOME") -> "/Users/jovaughn"
+func getenv(name) : return __os_getenv__(name);
+
+# getsize(path) -> int
+# Returns the size of a file in bytes.
+# Example: os.getsize("test.cx") -> 1024
+func getsize(path) : return __os_getsize__(path);

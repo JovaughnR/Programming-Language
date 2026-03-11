@@ -1,0 +1,56 @@
+# ============================================================
+#  random.cx — Random Module
+#  Public interface for random number generation.
+#
+#  Usage:
+#     import random;
+#     print(random.randint(1, 10));
+# ============================================================
+
+# random() -> float
+# Returns a random float in the range [0.0, 1.0).
+# Example: random.random() -> 0.472381
+func random() : return __random__();
+
+# randint(a, b) -> int
+# Returns a random integer N such that a <= N <= b.
+# Example: random.randint(1, 6) -> 4
+func randint(a, b) : return __random_randint__(a, b);
+
+# uniform(a, b) -> float
+# Returns a random float N such that a <= N <= b.
+# Example: random.uniform(1.0, 10.0) -> 7.342
+func uniform(a, b) : return __random_uniform__(a, b);
+
+# randrange(stop) -> int
+# Returns a random integer from range(0, stop).
+# Example: random.randrange(10) -> 7
+func randrange(stop) : return __random_randrange__(stop, none, none);
+
+# randrange_from(start, stop, step=1) -> int
+# Returns a random integer from range(start, stop, step).
+# Example: random.randrange_from(0, 10, 2) -> 4
+func randrange_from(start, stop, step = 1) : return __random_randrange__(start, stop, step);
+
+# choice(list) -> any
+# Returns a random element from a non-empty list.
+# Example: random.choice([1, 2, 3, 4, 5]) -> 3
+func choice(seq) : return __random_choice__(seq);
+
+# shuffle(list) -> none
+# Shuffles a list in place using Fisher-Yates algorithm.
+# Modifies the original list directly.
+# Example: random.shuffle(x)
+func shuffle(seq) : return __random_shuffle__(seq);
+
+# sample(list, k) -> list
+# Returns a new list of k unique random elements chosen from the list.
+# The original list is not modified.
+# Example: random.sample([1, 2, 3, 4, 5], 3) -> [4, 1, 3]
+func sample(seq, k) : return __random_sample__(seq, k);
+
+# seed(n) -> none
+# Seeds the random number generator for reproducible results.
+# Use the same seed to get the same sequence of random numbers.
+# Example: random.seed(42)
+func seed(n) : return __random_seed__(n);

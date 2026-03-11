@@ -1,0 +1,14 @@
+try {
+    x = 1;
+    throw "something went wrong";
+    x = 2;
+} catch Error as e {
+    print("caught: " + e);
+}
+print("after try");
+
+try {
+    a = 10 / 0;
+} catch Error as e {
+    print("division error: " + e);
+}

@@ -1,0 +1,32 @@
+# ============================================================
+#  hash.cx — Hash Module
+#  Cryptographic hash functions. No external dependencies.
+#
+#  Usage:
+#     import hash;
+#     print(hash.sha256("hello"));
+# ============================================================
+
+# md5(s) -> str
+# Returns the MD5 hash of a string as a lowercase hex string.
+# Note: MD5 is not cryptographically secure, use sha256 for security.
+# Example: hash.md5("hello") -> "5d41402abc4b2a76b9719d911017c592"
+func md5(s) : return __hash_md5__(s);
+
+# sha1(s) -> str
+# Returns the SHA1 hash of a string as a lowercase hex string.
+# Note: SHA1 is deprecated for security use, prefer sha256.
+# Example: hash.sha1("hello") -> "aaf4c61ddcc5e8a2dabede0f3b482cd9aea9434d"
+func sha1(s) : return __hash_sha1__(s);
+
+# sha256(s) -> str
+# Returns the SHA256 hash of a string as a lowercase hex string.
+# Recommended for general purpose cryptographic hashing.
+# Example: hash.sha256("hello") -> "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+func sha256(s) : return __hash_sha256__(s);
+
+# sha512(s) -> str
+# Returns the SHA512 hash of a string as a lowercase hex string.
+# Stronger than sha256, useful for password hashing.
+# Example: hash.sha512("hello") -> "9b71d224..."
+func sha512(s) : return __hash_sha512__(s);

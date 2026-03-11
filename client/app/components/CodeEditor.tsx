@@ -20,21 +20,20 @@ const LANG_CONTROL = [
 	"return",
 	"break",
 	"continue",
-	"pass",
 	"try",
 	"catch",
 	"throw",
 	"finally",
-];
-
-// ── Structure / declaration keywords ────────────────── purple
-const LANG_KEYWORDS = [
-	"func",
 	"if",
 	"elif",
 	"else",
 	"while",
 	"for",
+];
+
+// ── Structure / declaration keywords ────────────────── purple
+const LANG_KEYWORDS = [
+	"func",
 	"in",
 	"import",
 	"from",
@@ -45,14 +44,20 @@ const LANG_KEYWORDS = [
 	"nonlocal",
 ];
 
-// ── Boolean / null constants ─────────────────────────── orange
+// ── Lambda keyword ────────────────────────────────────── deep magenta
+const LANG_LAMBDA = ["lambda"];
+
+// ── Boolean / null constants ─────────────────────────── vivid amber
 const LANG_CONSTANTS = ["true", "false", "none"];
 
 // ── Logical operators (word form) ────────────────────── purple italic
 const LANG_LOGICAL = ["and", "or", "not"];
 
-// ── Type builtins ─────────────────────────────────────── yellow
-const LANG_TYPES = ["int", "float", "str", "bool", "list", "dict", "set"];
+// ── Primitive types ───────────────────────────────────── yellow
+const LANG_TYPES = ["int", "float", "str", "bool"];
+
+// ── Builtin collection types ──────────────────────────── teal/mint
+const LANG_COLLECTIONS = ["list", "dict", "set", "class", "range"];
 
 // ── Function builtins ─────────────────────────────────── blue
 const LANG_BUILTINS = [
@@ -60,13 +65,15 @@ const LANG_BUILTINS = [
 	"input",
 	"len",
 	"type",
-	"range",
 	"abs",
 	"min",
 	"max",
 	"sum",
 	"round",
 	"sorted",
+	"max",
+	"min",
+	"sum",
 ];
 
 function registerLanguage(monaco: typeof Monaco) {
@@ -79,7 +86,9 @@ function registerLanguage(monaco: typeof Monaco) {
 		control: LANG_CONTROL,
 		constants: LANG_CONSTANTS,
 		logical: LANG_LOGICAL,
+		lambda: LANG_LAMBDA,
 		types: LANG_TYPES,
+		collections: LANG_COLLECTIONS,
 		builtins: LANG_BUILTINS,
 
 		operators: [
@@ -103,6 +112,8 @@ function registerLanguage(monaco: typeof Monaco) {
 			"&=",
 			"|=",
 			"^=",
+			"?",
+			":",
 		],
 		symbols: /[=+\-*\/%<>!&|,;:.()[\]{}]+/,
 
@@ -137,9 +148,11 @@ function registerLanguage(monaco: typeof Monaco) {
 					{
 						cases: {
 							"@builtins": "predefined",
+							"@collections": "collection.call",
 							"@types": "type.call",
 							"@keywords": "keyword",
 							"@control": "control",
+							"@lambda": "lambda.keyword",
 							"@default": "function.call",
 						},
 					},
@@ -154,6 +167,8 @@ function registerLanguage(monaco: typeof Monaco) {
 							"@control": "control",
 							"@constants": "constant",
 							"@logical": "logical",
+							"@lambda": "lambda.keyword",
+							"@collections": "collection.name",
 							"@types": "type.name",
 							"@builtins": "predefined",
 							"@default": "variable.assignment",
@@ -170,6 +185,8 @@ function registerLanguage(monaco: typeof Monaco) {
 							"@control": "control",
 							"@constants": "constant",
 							"@logical": "logical",
+							"@lambda": "lambda.keyword",
+							"@collections": "collection.name",
 							"@types": "type.name",
 							"@builtins": "predefined",
 							"@default": "variable.other",
@@ -250,10 +267,27 @@ function registerLanguage(monaco: typeof Monaco) {
 					insertText: kw,
 					range,
 				})),
+				...LANG_LAMBDA.map((kw) => ({
+					label: kw,
+					kind: monaco.languages.CompletionItemKind.Keyword,
+					insertText: "lambda ${1:params}: ${0:expr}",
+					insertTextRules:
+						monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+					documentation: "Lambda expression",
+					range,
+				})),
 				...LANG_CONSTANTS.map((c) => ({
 					label: c,
 					kind: monaco.languages.CompletionItemKind.Constant,
 					insertText: c,
+					range,
+				})),
+				...LANG_COLLECTIONS.map((t) => ({
+					label: t,
+					kind: monaco.languages.CompletionItemKind.Class,
+					insertText: `${t}($0)`,
+					insertTextRules:
+						monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
 					range,
 				})),
 				...LANG_TYPES.map((t) => ({
@@ -322,12 +356,23 @@ function registerLanguage(monaco: typeof Monaco) {
 			// Logical operators — purple italic
 			{ token: "logical", foreground: "C792EA", fontStyle: "italic" },
 
-			// Constants true/false/none — orange
-			{ token: "constant", foreground: "F78C6C" },
+			// Constants true/false/none — vivid amber/gold
+			{ token: "constant", foreground: "FF9800", fontStyle: "bold" },
 
-			// Types — yellow
+			// Lambda keyword — deep magenta/hot pink
+			{
+				token: "lambda.keyword",
+				foreground: "FF007C",
+				fontStyle: "bold italic",
+			},
+
+			// Primitive types — yellow
 			{ token: "type.name", foreground: "FFCB6B" },
 			{ token: "type.call", foreground: "FFCB6B" },
+
+			// Collection types list/dict/set/class — teal/mint
+			{ token: "collection.name", foreground: "00BCD4", fontStyle: "bold" },
+			{ token: "collection.call", foreground: "00BCD4", fontStyle: "bold" },
 
 			// Built-in functions — blue
 			{ token: "predefined", foreground: "82AAFF" },
@@ -393,9 +438,21 @@ function registerLanguage(monaco: typeof Monaco) {
 			{ token: "keyword", foreground: "A626A4", fontStyle: "bold" },
 			{ token: "control", foreground: "E45649", fontStyle: "bold" },
 			{ token: "logical", foreground: "A626A4", fontStyle: "italic" },
-			{ token: "constant", foreground: "986801" },
+			{ token: "constant", foreground: "C75000", fontStyle: "bold" },
+
+			// Lambda keyword — deep magenta
+			{
+				token: "lambda.keyword",
+				foreground: "C2007A",
+				fontStyle: "bold italic",
+			},
 			{ token: "type.name", foreground: "C18401" },
 			{ token: "type.call", foreground: "C18401" },
+
+			// Collection types — teal
+			{ token: "collection.name", foreground: "0097A7", fontStyle: "bold" },
+			{ token: "collection.call", foreground: "0097A7", fontStyle: "bold" },
+
 			{ token: "predefined", foreground: "4078F2" },
 			{ token: "function.def", foreground: "4078F2", fontStyle: "bold" },
 			{ token: "function.call", foreground: "0184BC" },

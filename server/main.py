@@ -45,7 +45,8 @@ app.add_middleware(
 
 class RunRequest(BaseModel):
     code: str
-    filename: str = "program.lang"
+    filename: str = "program.cx"
+    stdin: str = ""       
 
 
 class RunResponse(BaseModel):
@@ -69,35 +70,23 @@ def health():
 
 @app.post("/api/run", response_model=RunResponse)
 def run_code(req: RunRequest):
-    # Validate code size
     code_bytes = req.code.encode("utf-8")
     if len(code_bytes) > MAX_CODE_SIZE_BYTES:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Code exceeds maximum size of {MAX_CODE_SIZE_BYTES} bytes",
-        )
+        raise HTTPException(status_code=400, detail=f"Code exceeds maximum size")
 
-    # Check binary exists
     if not Path(LANG_BINARY).exists():
         return RunResponse(
             stdout="",
-            stderr=(
-                f"[LangIDE Backend Error]\n"
-                f"Binary not found at: {LANG_BINARY}\n\n"
-                f"Please set the LANG_BINARY environment variable to your compiled interpreter path.\n\n"
-                f"Example:\n"
-                f"  LANG_BINARY=/path/to/your/binary uvicorn server:app --port 4000"
-            ),
+            stderr=f"Binary not found at: {LANG_BINARY}",
             exitCode=1,
         )
 
-    # Write code to a temp file
     ext = Path(req.filename).suffix or ".lang"
     tmp_path = Path(tempfile.gettempdir()) / f"langide_{uuid.uuid4().hex}{ext}"
 
     try:
         tmp_path.write_text(req.code, encoding="utf-8")
-        return _execute(tmp_path, req.code)
+        return _execute(tmp_path, req.code, req.stdin)   # ← pass stdin
     finally:
         try:
             tmp_path.unlink(missing_ok=True)
@@ -117,35 +106,39 @@ def _build_command(tmp_path: Path) -> tuple[list[str], bytes | None]:
         return [LANG_BINARY, str(tmp_path)], None
 
 
-def _execute(tmp_path: Path, code: str) -> RunResponse:
+def _execute(tmp_path: Path, code: str, stdin_data: str = "") -> RunResponse:
     cmd, stdin_input = _build_command(tmp_path)
+
+    # If mode is file/flag, stdin comes from the request
+    if stdin_input is None:
+        stdin_input = stdin_data.encode("utf-8") if stdin_data else b""
 
     try:
         result = subprocess.run(
             cmd,
-            input=stdin_input,
+            input=stdin_input,          # ← always pipe stdin, never None
             capture_output=True,
             timeout=EXECUTION_TIMEOUT_S,
-            # Run in a new process group so we can kill children too
             start_new_session=True,
         )
 
         stdout = result.stdout.decode("utf-8", errors="replace")
         stderr = result.stderr.decode("utf-8", errors="replace")
 
-        # Truncate oversized output
         if len(stdout.encode()) > MAX_OUTPUT_SIZE_BYTES:
             stdout = stdout[:MAX_OUTPUT_SIZE_BYTES] + "\n[Output truncated]"
 
         return RunResponse(stdout=stdout, stderr=stderr, exitCode=result.returncode)
 
     except subprocess.TimeoutExpired as e:
-        # Kill the whole process group
-        if e.process and e.process.pid:
-            try:
-                os.killpg(os.getpgid(e.process.pid), signal.SIGKILL)
-            except ProcessLookupError:
-                pass
+        # Python 3.10 fix — no .process attribute, use os.killpg differently
+        try:
+            import psutil
+            for proc in psutil.process_iter():
+                if proc.name() in [Path(LANG_BINARY).name]:
+                    proc.kill()
+        except Exception:
+            pass
 
         stdout = (e.stdout or b"").decode("utf-8", errors="replace")
         stderr = (e.stderr or b"").decode("utf-8", errors="replace")
@@ -183,3 +176,6 @@ if __name__ == "__main__":
         print(f"✓  Binary found: {LANG_BINARY}\n")
 
     uvicorn.run("main:app", host="0.0.0.0", port=PORT, reload=True)
+
+
+# CMD: LANG_BINARY=../lang/cxlang python3 main.py

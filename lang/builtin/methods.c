@@ -11,18 +11,17 @@
 #include <math.h>
 #include <time.h>
 
-#include "../lib/type.h"
-#include "../lib/dict.h"
-#include "../lib/utils.h"
-#include "../lib/list.h"
-#include "../lib/maloc.h"
-#include "../lib/daloc.h"
-#include "../lib/set.h"
-#include "../lib/str.h"
-#include "../lib/error.h"
-#include "../lib/format.h"
-
-extern FILE *g_input_stream;
+#include "../core/lib/error.h"
+#include "../core/lib/type.h"
+#include "../core/lib/maloc.h"
+#include "../core/lib/daloc.h"
+#include "../core/lib/list.h"
+#include "../core/lib/utils.h"
+#include "../core/lib/eval.h"
+#include "../core/lib/format.h"
+#include "../core/lib/str.h"
+#include "../core/lib/set.h"
+#include "../core/lib/dict.h"
 
 //=========================================================
 //  I/O Functions
@@ -129,6 +128,14 @@ Data *builtin_type(Data *obj)
       type_name = strdup(getDataType(obj->type));
 
    return createData(TYPE_STR, type_name);
+}
+
+// TODO: IMPLEMENT PROPERLY
+Data *builtin_instance(Data *target, Data *object)
+{
+   const char *target_type = getDataType(target->type);
+   return createData(TYPE_BOOL, &(int){strcmp(target_type, getDataType(object->type)) == 0});
+   return createData(TYPE_BOOL, &(int){isInstance(target, object->type)});
 }
 
 // int(x)
@@ -418,7 +425,7 @@ Data *builtin_list(Data *data)
 
 Data *builtin_dict(Data *data)
 {
-   if (data->type != TYPE_DICT)
+   if (data && data->type != TYPE_DICT)
    {
       throw_error(ERROR_VALUE, "dictionary sequence can't be updated");
       return NULL;
@@ -427,7 +434,7 @@ Data *builtin_dict(Data *data)
    if (dict)
       return createData(TYPE_DICT, dict);
 
-   return createData(TYPE_DICT, dict_create(256));
+   return createData(TYPE_DICT, dict_create(__len__));
 }
 
 Data *builtin_set(Data *data)
@@ -442,7 +449,7 @@ Data *builtin_set(Data *data)
       List *list = LIST_PTR(data);
 
       for (int i = 0; i < list->length; i++)
-         set_add(list->items[i], set);
+         set_add(cloneData(list->items[i]), set);
    }
 
    else if (data->type == TYPE_DICT)
@@ -632,4 +639,228 @@ Data *builtin_sorted(Data *object)
    }
    qsort(result->items, result->length, sizeof(void *), compare_data);
    return createData(TYPE_LIST, result);
+}
+
+static char *mm_str(const char *str, Operator op)
+{
+   char *mm = str_char_at(str, 0);
+   int len = strlen(str);
+
+   for (int i = 1; i < len; i++)
+   {
+      char *ch = str_char_at(str, i);
+      if (op == LST)
+      {
+         if (strcmp(ch, mm) < 0)
+         {
+            free(mm);
+            mm = ch;
+         }
+         else
+         {
+            free(ch);
+         }
+      }
+      else if (op == GRT)
+      {
+         if (strcmp(ch, mm) > 0)
+         {
+            free(mm);
+            mm = ch;
+         }
+         else
+         {
+            free(ch);
+         }
+      }
+   }
+   return mm;
+}
+
+static void *mm_list(const List *list, Operator op)
+{
+   void *mm = list->items[0];
+   for (int i = 1; i < list->length; i++)
+   {
+      Data *cur = (Data *)list->items[i];
+      Data *res = handleBinaryOperation(cur, mm, op);
+      if (*(int *)res->atom)
+      {
+         data_free(res);
+         mm = cur;
+      }
+      else
+      {
+         data_free(res);
+      }
+   }
+   return mm;
+}
+
+Data *builtin_max(List *args)
+{
+   if (args->length == 1)
+   {
+      Data *arg = args->items[0];
+      switch (arg->type)
+      {
+      case TYPE_STR:
+      {
+         char *max_char = mm_str(arg->str, GRT);
+         return createData(TYPE_STR, max_char);
+      }
+      case TYPE_LIST:
+      {
+         void *max_item = mm_list(LIST_PTR(arg), GRT);
+         return cloneData(max_item);
+      }
+      default:
+         throw_error(
+             ERROR_TYPE,
+             "'%s' object is not iterable",
+             getDataType(arg->type));
+         return createData(TYPE_NONE, NULL);
+      }
+   }
+
+   Data *max = (Data *)args->items[0];
+   for (int i = 1; i < args->length; i++)
+   {
+      Data *current = (Data *)args->items[i];
+      Data *res = handleBinaryOperation(max, current, GRT);
+
+      if (res->type == TYPE_BOOL && *(int *)res->atom)
+      {
+         data_free(res);
+         max = current;
+      }
+      else
+      {
+         data_free(res);
+      }
+   }
+   return cloneData(max);
+}
+
+Data *builtin_min(List *args)
+{
+   if (args->length == 1)
+   {
+      Data *arg = args->items[0];
+      switch (arg->type)
+      {
+      case TYPE_STR:
+      {
+         char *min_char = mm_str(arg->str, LST);
+         return createData(TYPE_STR, min_char);
+      }
+      case TYPE_LIST:
+      {
+         void *min_item = mm_list(LIST_PTR(arg), LST);
+         return cloneData(min_item);
+      }
+      default:
+         throw_error(
+             ERROR_TYPE,
+             "'%s' object is not iterable",
+             getDataType(arg->type));
+         return createData(TYPE_NONE, NULL);
+      }
+   }
+
+   Data *min = (Data *)args->items[0];
+
+   for (int i = 1; i < args->length; i++)
+   {
+      Data *current = (Data *)args->items[i];
+      Data *res = handleBinaryOperation(min, current, LST);
+
+      if (res->type == TYPE_BOOL && *(int *)res->atom)
+      {
+         data_free(res);
+         min = current;
+      }
+      else
+      {
+         data_free(res);
+      }
+   }
+   return cloneData(min);
+}
+
+Data *builtin_sum(List *args)
+{
+   if (!args || args->length == 0)
+      return createData(TYPE_INT, &(int){0});
+
+   // sum(iterable) — single argument path
+   if (args->length == 1)
+   {
+      Data *arg = args->items[0];
+      if (arg->type == TYPE_LIST)
+      {
+         List *list = LIST_PTR(arg);
+         if (!list || list->length == 0)
+            return createData(TYPE_INT, &(int){0});
+
+         Data *total = cloneData(list->items[0]);
+         for (int i = 1; i < list->length; i++)
+         {
+            Data *val = (Data *)list->items[i];
+            if (!isNumeric(val->type))
+            {
+               data_free(total);
+               throw_error(
+                   ERROR_TYPE,
+                   "unsupported operand type(s) for +: '%s'",
+                   getDataType(val->type));
+               return createData(TYPE_NONE, NULL);
+            }
+            Data *res = handleBinaryOperation(total, val, ADD);
+            data_free(total);
+            total = res;
+         }
+         return total;
+      }
+
+      // sum(range(n))
+      if (arg->type == TYPE_RANGE)
+      {
+         Range *r = arg->range;
+         int n = (r->stop - r->start + r->step - (r->step > 0 ? 1 : -1)) / r->step;
+         if (n <= 0)
+            return createData(TYPE_INT, &(int){0});
+
+         int first = r->start;
+         int total = n * first + r->step * (n * (n - 1) / 2);
+         return createData(TYPE_INT, &total);
+      }
+      throw_error(ERROR_TYPE, "'%s' object is not iterable", getDataType(arg->type));
+      return createData(TYPE_NONE, NULL);
+   }
+
+   // sum(1, 2, 3) — variadic path
+   Data *total = NULL;
+   for (int i = 0; i < args->length; i++)
+   {
+      Data *current = (Data *)args->items[i];
+      if (!isNumeric(current->type))
+      {
+         if (total)
+            data_free(total);
+         throw_error(ERROR_TYPE, "unsupported operand type(s) for +: '%s'",
+                     getDataType(current->type));
+         return createData(TYPE_NONE, NULL);
+      }
+
+      if (!total)
+         total = cloneData(current);
+      else
+      {
+         Data *res = handleBinaryOperation(total, current, ADD);
+         data_free(total);
+         total = res;
+      }
+   }
+   return total;
 }

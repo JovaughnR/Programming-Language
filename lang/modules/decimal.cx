@@ -1,0 +1,132 @@
+# ============================================================
+#  decimal.cx — Decimal Module
+#  Arbitrary precision decimal arithmetic.
+#  Values are represented as strings internally.
+#
+#  Usage:
+#     import decimal;
+#     a = "0.1";
+#     b = "0.2";
+#     print(decimal.add(a, b));  # "0.3" exactly, no float error
+# ============================================================
+
+# add(a, b) -> str
+# Adds two decimal values with exact precision.
+# Example: decimal.add("0.1", "0.2") -> "0.3"
+func add(a, b) : return __decimal_add__(a, b);
+
+# sub(a, b) -> str
+# Subtracts b from a with exact precision.
+# Example: decimal.sub("1.0", "0.3") -> "0.7"
+func sub(a, b) : return __decimal_sub__(a, b);
+
+# mul(a, b) -> str
+# Multiplies two decimal values with exact precision.
+# Example: decimal.mul("0.1", "0.3") -> "0.03"
+func mul(a, b) : return __decimal_mul__(a, b);
+
+# div(a, b, precision=17) -> str
+# Divides a by b to the given number of decimal places.
+# Example: decimal.div("1", "3")     -> "0.33333333333333333"
+# Example: decimal.div("1", "3", 5)  -> "0.33333"
+func div(a, b, precision = 17) : return __decimal_div__(a, b, precision);
+
+# mod(a, b) -> str
+# Returns the remainder of a divided by b.
+# Example: decimal.mod("10.5", "3.2") -> "0.9"
+func mod(a, b) : return __decimal_mod__(a, b);
+
+# pow(a, b) -> str
+# Raises a to the power of b.
+# Example: decimal.pow("2", "10") -> "1024"
+func pow(a, b) : return __decimal_pow__(a, b);
+
+# abs(a) -> str
+# Returns the absolute value.
+# Example: decimal.abs("-3.14") -> "3.14"
+func abs(a) : return __decimal_abs__(a);
+
+# neg(a) -> str
+# Negates the value.
+# Example: decimal.neg("3.14") -> "-3.14"
+func neg(a) : return __decimal_neg__(a);
+
+# floor(a) -> str
+# Returns the largest integer less than or equal to a.
+# Example: decimal.floor("3.7")  -> "3"
+# Example: decimal.floor("-3.2") -> "-4"
+func floor(a) : return __decimal_floor__(a);
+
+# ceil(a) -> str
+# Returns the smallest integer greater than or equal to a.
+# Example: decimal.ceil("3.2")  -> "4"
+# Example: decimal.ceil("-3.7") -> "-3"
+func ceil(a) : return __decimal_ceil__(a);
+
+# round(a, places=0) -> str
+# Rounds a to the given number of decimal places.
+# Example: decimal.round("3.14159", 2) -> "3.14"
+# Example: decimal.round("3.5")        -> "4"
+func round(a, places = 0) : return __decimal_round__(a, places);
+
+# cmp(a, b) -> int
+# Compares two decimals. Returns -1, 0, or 1.
+# Example: decimal.cmp("1.0", "2.0") -> -1
+# Example: decimal.cmp("2.0", "2.0") -> 0
+# Example: decimal.cmp("3.0", "2.0") -> 1
+func cmp(a, b) : return __decimal_cmp__(a, b);
+
+# eq(a, b) -> bool
+# Returns true if a equals b.
+# Example: decimal.eq("0.10", "0.1") -> true
+func eq(a, b) : return __decimal_eq__(a, b);
+
+# lt(a, b) -> bool
+# Returns true if a is less than b.
+# Example: decimal.lt("0.1", "0.2") -> true
+func lt(a, b) : return __decimal_lt__(a, b);
+
+# gt(a, b) -> bool
+# Returns true if a is greater than b.
+# Example: decimal.gt("0.2", "0.1") -> true
+func gt(a, b) : return __decimal_gt__(a, b);
+
+# tostr(a) -> str
+# Normalizes and returns a decimal as a string.
+# Example: decimal.tostr("003.140") -> "3.14"
+func tostr(a) : return __decimal_tostr__(a);
+
+# tofloat(a) -> float
+# Converts a decimal string to a native float.
+# Example: decimal.tofloat("3.14") -> 3.14
+func tofloat(a) : return __decimal_tofloat__(a);
+
+# toint(a) -> int
+# Converts a decimal string to an integer (truncates).
+# Example: decimal.toint("3.99") -> 3
+func toint(a) : return __decimal_toint__(a);
+
+# fromstr(s) -> str
+# Parses and normalizes a decimal from a string.
+# Example: decimal.fromstr("003.140") -> "3.14"
+func fromstr(s) : return __decimal_fromstr__(s);
+
+# sqrt(a, precision=28) -> str
+# Returns the square root to arbitrary precision.
+# Example: decimal.sqrt("2", 50) -> 50 digits of sqrt(2)
+func sqrt(a, precision = 28) : return __decimal_sqrt__(a, precision);
+
+# factorial(n) -> str
+# Returns the exact factorial of n with no overflow.
+# Example: decimal.factorial("100") -> exact 158-digit number
+func factorial(n) : return __decimal_factorial__(n);
+
+# gcd(a, b) -> str
+# Returns the greatest common divisor.
+# Example: decimal.gcd("48", "18") -> "6"
+func gcd(a, b) : return __decimal_gcd__(a, b);
+
+# lcm(a, b) -> str
+# Returns the least common multiple.
+# Example: decimal.lcm("4", "6") -> "12"
+func lcm(a, b) : return __decimal_lcm__(a, b);

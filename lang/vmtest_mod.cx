@@ -1,0 +1,4 @@
+import math;
+print(math.sqrt(81));
+print(math.floor(3.7));
+print(math.pi);

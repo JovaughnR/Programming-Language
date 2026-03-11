@@ -1,0 +1,23 @@
+func square(n) {
+    return n * n;
+}
+
+func apply(f, x) {
+    return f(x);
+}
+
+print(apply(square, 5));
+
+d = {"a": 1, "b": 2};
+
+print(d["a"] + d["b"]);
+
+s = "hello";
+print(s[0]);
+
+x = 10;
+if (x > 5) {
+    print("big");
+} else {
+    print("small");
+}

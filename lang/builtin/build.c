@@ -7,20 +7,21 @@
 #include <string.h>
 #include <math.h>
 
-#include "../lib/type.h"
-#include "../lib/dict.h"
-#include "../lib/utils.h"
-#include "../lib/list.h"
-#include "../lib/set.h"
-#include "../lib/maloc.h"
-#include "../lib/daloc.h"
-#include "../lib/error.h"
-#include "../lib/build.h"
-#include "../lib/exec.h"
-#include "../lib/str.h"
-#include "../lib/class.h"
-#include "../lib/format.h"
-#include "methods.h"
+#include "./lib/build.h"
+#include "./lib/methods.h"
+
+#include "../core/lib/type.h"
+#include "../core/lib/dict.h"
+#include "../core/lib/utils.h"
+#include "../core/lib/list.h"
+#include "../core/lib/set.h"
+#include "../core/lib/maloc.h"
+#include "../core/lib/daloc.h"
+#include "../core/lib/error.h"
+#include "../core/lib/exec.h"
+#include "../core/lib/str.h"
+#include "../core/lib/class.h"
+#include "../core/lib/format.h"
 
 // Core builtins
 const BuiltinInfo BUILTIN[] = {
@@ -39,7 +40,7 @@ const BuiltinInfo BUILTIN[] = {
     {BUILTIN_ABS, "abs", 1, 1},
     {BUILTIN_MIN, "min", 1, -1},
     {BUILTIN_MAX, "max", 1, -1},
-    {BUILTIN_SUM, "sum", 1, 2},
+    {BUILTIN_SUM, "sum", 1, -1},
     {BUILTIN_POW, "pow", 2, 3},
     {BUILTIN_ROUND, "round", 1, 2},
     {BUILTIN_SORTED, "sorted", 1, 2},
@@ -150,20 +151,20 @@ const BuiltinInfo RANGE[] = {
 //  Argument Extraction Helpers
 //=========================================================
 
-static inline Data *arg_data(List *args, int i)
+Data *arg_data(List *args, int i)
 {
    if (!args || i >= args->length)
       return NULL;
    return (Data *)args->items[i];
 }
 
-static inline int arg_int(List *args, int i, int def)
+int arg_int(List *args, int i, int def)
 {
    Data *d = arg_data(args, i);
    return (d && d->type == TYPE_INT && d->atom) ? *(int *)d->atom : def;
 }
 
-static inline const char *arg_str(List *args, int i, const char *def)
+const char *arg_str(List *args, int i, const char *def)
 {
    Data *d = arg_data(args, i);
    return (d && d->type == TYPE_STR && d->str) ? d->str : def;
@@ -206,8 +207,7 @@ void initializeRegistry(Dict *dict, const BuiltinInfo *registry, size_t count)
 //=========================================================
 //  MAIN INITIALIZATION FUNCTION
 //=========================================================
-
-void initializeBuiltins(Runtime *rt)
+void builtin_init(Runtime *rt)
 {
    if (!rt || !rt->methods)
       return;
@@ -284,14 +284,14 @@ Data *dispatchBuiltin(BuiltinType type, List *args, Dict *kwargs, Runtime *rt)
       return builtin_pow(ARG(0), ARG(1));
    case BUILTIN_ROUND:
       return builtin_round(ARG(0), ARG_INT(1, 0));
-
-   case BUILTIN_MIN:
-   case BUILTIN_MAX:
-   case BUILTIN_SUM:
    case BUILTIN_DICT:
-      throw_error(ERROR_SYNTAX, "builtin '%s' not yet implemented",
-                  BUILTIN[type].name);
-      return createData(TYPE_NONE, NULL);
+      return builtin_dict(ARG(0));
+   case BUILTIN_MAX:
+      return builtin_max(args);
+   case BUILTIN_MIN:
+      return builtin_min(args);
+   case BUILTIN_SUM:
+      return builtin_sum(args);
 
    default:
       throw_error(ERROR_SYNTAX, "unknown builtin type %d", type);
@@ -434,9 +434,7 @@ Data *dispatchDictMethod(BuiltinType type, Data *object, List *args, Dict *kwarg
 
    case DICT_KEYS:
    {
-      List *keys = list_create(dict->capacity);
-      keys->length = dict_keys(dict, keys->items);
-      keys->end = keys->length - 1;
+      List *keys = dict_keys(dict);
       return createData(TYPE_LIST, keys);
    }
 
@@ -1010,21 +1008,8 @@ static const BuiltinInfo *handleBuiltin(Data *object, Data *method, List *args)
       return NULL;
 
    int arglen = args ? args->length : 0;
-   if (arglen < info->min_args)
-   {
-      throw_error(
-          ERROR_TYPE, "%s.%s() takes at least %d argument(s), %d given",
-          getDataType(object->type), info->name, info->min_args, arglen);
+   if (!validArgsProvided(info->min_args, info->max_args, arglen, info->name))
       return NULL;
-   }
-
-   if (info->max_args != -1 && arglen > info->max_args)
-   {
-      throw_error(
-          ERROR_TYPE, "%s.%s() takes at most %d argument(s), %d given",
-          getDataType(object->type), info->name, info->max_args, arglen);
-      return NULL;
-   }
 
    return (const BuiltinInfo *)info;
 }

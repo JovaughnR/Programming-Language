@@ -1,0 +1,58 @@
+# ============================================================
+#  net.cx — Net Module
+#  HTTP client built on libcurl.
+#
+#  All functions return a response dict:
+#    {
+#      "status":  int,   # HTTP status code
+#      "body":    str,   # response body
+#      "headers": dict   # response headers
+#    }
+#
+#  Usage:
+#     import net;
+#     res = net.get("https://api.github.com");
+#     print(res["status"]);
+#     print(res["body"]);
+# ============================================================
+
+# get(url, headers=none) -> dict
+# Performs an HTTP GET request.
+# Example: res = net.get("https://api.example.com/users")
+func get(url, headers = none) : return __net_get__(url, headers);
+
+# post(url, body="", headers=none) -> dict
+# Performs an HTTP POST request.
+# Example: res = net.post("https://api.example.com/users", json.stringify(data))
+func post(url, body = "", headers = none) : return __net_post__(url, body, headers);
+
+# put(url, body="", headers=none) -> dict
+# Performs an HTTP PUT request.
+# Example: res = net.put("https://api.example.com/users/1", json.stringify(data))
+func put(url, body = "", headers = none) : return __net_put__(url, body, headers);
+
+# delete(url, headers=none) -> dict
+# Performs an HTTP DELETE request.
+# Example: res = net.delete("https://api.example.com/users/1")
+func delete(url, headers = none) : return __net_delete__(url, headers);
+
+# patch(url, body="", headers=none) -> dict
+# Performs an HTTP PATCH request.
+# Example: res = net.patch("https://api.example.com/users/1", json.stringify(data))
+func patch(url, body = "", headers = none) : return __net_patch__(url, body, headers);
+
+# head(url, headers=none) -> dict
+# Performs an HTTP HEAD request — returns headers only, no body.
+# Example: res = net.head("https://example.com")
+func head(url, headers = none) : return __net_head__(url, headers);
+
+# request(options) -> dict
+# Performs a fully customized HTTP request.
+# Options: method, url, body, headers, timeout, follow_redirects, verify_ssl
+# Example:
+#   opts = dict();
+#   opts["method"] = "POST";
+#   opts["url"]    = "https://api.example.com";
+#   opts["body"]   = json.stringify(payload);
+#   res = net.request(opts);
+func request(options) : return __net_request__(options);

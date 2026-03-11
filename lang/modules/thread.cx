@@ -1,0 +1,92 @@
+# ============================================================
+#  thread.cx — Thread Module
+#  POSIX thread support with mutexes and condition variables.
+#
+#  IMPORTANT: Threads run in isolated environments.
+#  Variables from the calling scope are NOT accessible inside
+#  thread functions. Pass all data via the args parameter and
+#  retrieve results via thread.join().
+#
+#  CORRECT:
+#     func worker(data) { return data * 2; }
+#     t = thread.create(worker, [42]);
+#     result = thread.join(t);  # -> 84
+#
+#  INCORRECT (will raise NameError):
+#     x = 10;
+#     func bad_worker() { return x; }  # x not accessible
+#     t = thread.create(bad_worker, []);
+# ============================================================
+
+# create(func, args=[], name="") -> thread
+# Creates and starts a new thread running func(args).
+# Returns a thread handle.
+# Example: t = thread.create(worker, [data])
+func create(fn, args = [], name = "") : return __thread_create__(fn, args, name);
+
+# join(thread) -> any
+# Waits for thread to finish. Returns the thread's return value.
+# Example: result = thread.join(t)
+func join(t) : return __thread_join__(t);
+
+# detach(thread) -> none
+# Detaches a thread to run independently without joining.
+# Example: thread.detach(t)
+func detach(t) : return __thread_detach__(t);
+
+# sleep(ms) -> none
+# Sleeps the current thread for ms milliseconds.
+# Example: thread.sleep(1000)  # 1 second
+func sleep(ms) : return __thread_sleep__(ms);
+
+# id() -> int
+# Returns the current thread's ID.
+# Example: print(thread.id())
+func id() : return __thread_id__();
+
+# mutex_create() -> mutex
+# Creates a mutex for protecting shared data.
+# Example: m = thread.mutex_create()
+func mutex_create() : return __mutex_create__();
+
+# mutex_lock(mutex) -> none
+# Acquires the mutex. Blocks until available.
+# Example: thread.mutex_lock(m)
+func mutex_lock(m) : return __mutex_lock__(m);
+
+# mutex_unlock(mutex) -> none
+# Releases the mutex.
+# Example: thread.mutex_unlock(m)
+func mutex_unlock(m) : return __mutex_unlock__(m);
+
+# mutex_destroy(mutex) -> none
+# Destroys the mutex and frees resources.
+# Example: thread.mutex_destroy(m)
+func mutex_destroy(m) : return __mutex_destroy__(m);
+
+# cond_create() -> cond
+# Creates a condition variable.
+# Example: c = thread.cond_create()
+
+func cond_create() : return __cond_create__();
+
+# cond_wait(cond, mutex) -> none
+# Waits on condition variable, releasing mutex atomically.
+
+# Example: thread.cond_wait(c, m)
+func cond_wait(c, m) : return __cond_wait__(c, m);
+
+# cond_signal(cond) -> none
+# Wakes one thread waiting on the condition.
+# Example: thread.cond_signal(c)
+func cond_signal(c) : return __cond_signal__(c);
+
+# cond_broadcast(cond) -> none
+# Wakes all threads waiting on the condition.
+# Example: thread.cond_broadcast(c)
+func cond_broadcast(c) : return __cond_broadcast__(c);
+
+# cond_destroy(cond) -> none
+# Destroys the condition variable.
+# Example: thread.cond_destroy(c)
+func cond_destroy(c) : return __cond_destroy__(c);

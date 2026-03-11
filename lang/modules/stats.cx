@@ -1,0 +1,76 @@
+# ============================================================
+#  stats.cx — Statistics Module
+#  Public interface for statistical computations.
+#
+#  Usage:
+#     import stats;
+#     print(stats.mean([1, 2, 3, 4, 5]));
+# ============================================================
+
+# mean(list) -> float
+# Returns the arithmetic mean of a list of numbers.
+# Example: stats.mean([1, 2, 3, 4, 5]) -> 3.0
+func mean(data) : return __stats_mean__(data);
+
+# median(list) -> float
+# Returns the middle value. For even length returns average of two middle values.
+# Example: stats.median([1, 2, 3, 4, 5]) -> 3.0
+# Example: stats.median([1, 2, 3, 4])    -> 2.5
+func median(data) : return __stats_median__(data);
+
+# mode(list) -> float
+# Returns the most frequently occurring value.
+# If multiple values tie, returns the smallest.
+# Example: stats.mode([1, 2, 2, 3, 3, 3]) -> 3.0
+func mode(data) : return __stats_mode__(data);
+
+# variance(list) -> float
+# Returns the population variance.
+# Example: stats.variance([2, 4, 4, 4, 5, 5, 7, 9]) -> 4.0
+func variance(data) : return __stats_variance__(data);
+
+# stdev(list) -> float
+# Returns the population standard deviation.
+# Example: stats.stdev([2, 4, 4, 4, 5, 5, 7, 9]) -> 2.0
+func stdev(data) : return __stats_stdev__(data);
+
+# correlation(x, y) -> float
+# Returns the Pearson correlation coefficient between two equal-length lists.
+# Result ranges from -1.0 (perfect negative) to 1.0 (perfect positive).
+# Example: stats.correlation([1,2,3,4,5], [2,4,6,8,10]) -> 1.0
+func correlation(x, y) : return __stats_correlation__(x, y);
+
+# min(list) -> float
+# Returns the smallest value in the list.
+# Example: stats.min([3, 1, 4, 1, 5]) -> 1.0
+func min(data) : return __stats_min__(data);
+
+# max(list) -> float
+# Returns the largest value in the list.
+# Example: stats.max([3, 1, 4, 1, 5]) -> 5.0
+func max(data) : return __stats_max__(data);
+
+# range(list) -> float
+# Returns the difference between max and min values.
+# Example: stats.range([1, 2, 3, 4, 5]) -> 4.0
+func range(data) : return __stats_range__(data);
+
+# sum(list) -> float
+# Returns the sum of all values.
+# Example: stats.sum([1, 2, 3, 4, 5]) -> 15.0
+func sum(data) : return __stats_sum__(data);
+
+# count(list) -> int
+# Returns the number of elements in the list.
+# Example: stats.count([1, 2, 3, 4, 5]) -> 5
+func count(data) : return __stats_count__(data);
+
+# percentile(list, p) -> float
+# Returns the p-th percentile value (p between 0 and 100).
+# Example: stats.percentile([1..10], 90) -> 9.1
+func percentile(data, p) : return __stats_percentile__(data, p);
+
+# zscore(list) -> list
+# Returns the z-score of each value (standard deviations from mean).
+# Example: stats.zscore([2, 4, 4, 4, 5, 5, 7, 9]) -> [-1.5, -0.5, ...]
+func zscore(data) : return __stats_zscore__(data);
