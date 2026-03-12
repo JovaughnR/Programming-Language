@@ -59,6 +59,7 @@ void *cloneData(const void *d)
    case TYPE_LAMBDA:
    case TYPE_DB:
    case TYPE_STMT:
+   case TYPE_GENERATOR:
       copy->ref = src->ref;
       src->ref->references++;
       break;

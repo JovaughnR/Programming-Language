@@ -928,6 +928,10 @@ static Data *executeData(Data *leaf, Runtime *rt)
       value = evalListValues((Data *)leaf, rt);
       break;
 
+   case TYPE_GENERATOR:
+      // TODO: Needs Implementation
+      break;
+
    case TYPE_DICT_EXPR:
       value = evalDictValues((Data *)leaf, rt);
       break;
@@ -1032,126 +1036,4 @@ Data *executeAST(ASTnode *tree, Runtime *rt)
    data_free(right);
 
    return result;
-}
-
-Data *getFromIndex_vm(Data *obj, Data *idx, Runtime *rt)
-{
-   Indexed indexed = {.object = NULL, .value = NULL};
-   // Reuse existing getFromIndex logic directly
-   if (obj->type == TYPE_LIST)
-   {
-      if (idx->type != TYPE_INT)
-      {
-         throw_error(ERROR_TYPE, "list index must be an integer");
-         return createData(TYPE_NONE, NULL);
-      }
-      List *l = LIST_PTR(obj);
-      int i = *idx->atom;
-      if (i < 0)
-         i += l->length;
-      if (i < 0 || i >= l->length)
-      {
-         throw_error(ERROR_INDEX, "list index out of range");
-         return createData(TYPE_NONE, NULL);
-      }
-      return cloneData((Data *)l->items[i]);
-   }
-   if (obj->type == TYPE_DICT)
-   {
-      Data *result = dict_get(idx, DICT_PTR(obj));
-      if (!result)
-      {
-         throw_error(ERROR_KEY, "'%s' key not found",
-                     dataTostring(idx));
-         return createData(TYPE_NONE, NULL);
-      }
-      return cloneData(result);
-   }
-   if (obj->type == TYPE_STR)
-   {
-      if (idx->type != TYPE_INT)
-      {
-         throw_error(ERROR_TYPE, "string index must be an integer");
-         return createData(TYPE_NONE, NULL);
-      }
-      int i = *idx->atom;
-      int len = strlen(obj->str);
-      if (i < 0)
-         i += len;
-      if (i < 0 || i >= len)
-      {
-         throw_error(ERROR_INDEX, "string index out of range");
-         return createData(TYPE_NONE, NULL);
-      }
-      char ch[2] = {obj->str[i], '\0'};
-      return createData(TYPE_STR, ch);
-   }
-   (void)indexed;
-   (void)rt;
-   throw_error(ERROR_TYPE, "'%s' object is not subscriptable",
-               getDataType(obj->type));
-   return createData(TYPE_NONE, NULL);
-}
-
-Data *setIndex_vm(Data *obj, Data *idx, Data *val, Runtime *rt)
-{
-   (void)rt;
-   if (obj->type == TYPE_LIST)
-   {
-      if (idx->type != TYPE_INT)
-      {
-         throw_error(ERROR_TYPE, "list index must be an integer");
-         return createData(TYPE_NONE, NULL);
-      }
-      List *l = LIST_PTR(obj);
-      int i = *idx->atom;
-      if (i < 0)
-         i += l->length;
-      if (i < 0 || i >= l->length)
-      {
-         throw_error(ERROR_INDEX, "list index out of range");
-         return createData(TYPE_NONE, NULL);
-      }
-      data_free((Data *)l->items[i]);
-      l->items[i] = cloneData(val);
-      return createData(TYPE_NONE, NULL);
-   }
-   if (obj->type == TYPE_DICT)
-   {
-      dict_insert(cloneData(idx), cloneData(val), DICT_PTR(obj));
-      return createData(TYPE_NONE, NULL);
-   }
-   throw_error(ERROR_TYPE, "'%s' object does not support item assignment",
-               getDataType(obj->type));
-   return createData(TYPE_NONE, NULL);
-}
-
-Data *setAttribute_vm(Data *obj, Data *name, Data *val, Runtime *rt)
-{
-   (void)rt;
-   if (obj->type == TYPE_INSTANCE)
-   {
-      Instance *inst = INST_PTR(obj);
-      dict_insert(cloneData(name), cloneData(val), inst->attributes);
-      return createData(TYPE_NONE, NULL);
-   }
-   throw_error(ERROR_ATTRIBUTE,
-               "cannot set attribute '%s' on '%s'",
-               name->str, getDataType(obj->type));
-   return createData(TYPE_NONE, NULL);
-}
-
-Data *executeImport_vm(const char *name, Runtime *rt)
-{
-   Data *mod_name = createData(TYPE_STR, (void *)name);
-   Import imp = {.module = mod_name, .alias = NULL, .items = NULL, .importAll = 0};
-   executeImport(&imp, rt);
-   Data *result = getData(mod_name, rt);
-   data_free(mod_name);
-   return result;
-}
-
-Data *evalFString_vm(Data *fmt, Runtime *rt)
-{
-   return evalFString(fmt, rt);
 }

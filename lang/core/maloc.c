@@ -90,6 +90,7 @@ Data *createData(DataType type, void *value)
    case TYPE_COND:
    case TYPE_FILE:
    case TYPE_HTTP_SERVER:
+   case TYPE_GENERATOR:
       d->ref = ref_create(value);
       break;
 
@@ -549,4 +550,16 @@ Await *createAwait(ASTnode *expr)
       throw_error(ERROR_MEMORY, "Could not allocate memory");
    a->expr = expr;
    return a;
+}
+
+Generator *createGenerator(char *ident, ForLoop *loop, ASTnode *cond)
+{
+   Generator *generator = (Generator *)malloc(sizeof(Generator));
+   if (!generator)
+      return NULL;
+
+   generator->ident = ident;
+   generator->loop = loop;
+   generator->cond = cond;
+   return generator;
 }

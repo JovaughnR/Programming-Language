@@ -23,9 +23,6 @@ SOURCES = ./parse/y.tab.c ./parse/lex.yy.c \
           ./builtin/net.c ./builtin/socket.c \
           ./builtin/db.c ./builtin/thread.c \
           ./builtin/async.c ./builtin/http.c \
-	   ./vm/vm.c ./vm/disasm.c \
-			 ./vm/chunk.c ./vm/compiler.c \
-			 ./vm/serial.c \
 	  		 main.c
 
 OBJ_DIR = ./build
@@ -65,9 +62,6 @@ $(OBJ_DIR)/%.o: ./core/%.c | $(OBJ_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(OBJ_DIR)/%.o: ./builtin/%.c | $(OBJ_DIR)
-	$(CC) $(CFLAGS) -c $< -o $@
-
-$(OBJ_DIR)/%.o: ./vm/%.c | $(OBJ_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(OBJ_DIR)/%.o: %.c | $(OBJ_DIR)

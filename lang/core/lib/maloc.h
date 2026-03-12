@@ -287,4 +287,5 @@ EnumItem *createEnumItem(char *name, struct ASTnode *value);
 Enum *createEnum(char *name, struct List *items);
 Await *createAwait(ASTnode *expr);
 
+Generator *createGenerator(char *ident, ForLoop *loop, ASTnode *cond);
 #endif

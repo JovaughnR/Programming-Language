@@ -45,6 +45,7 @@ typedef enum
    TYPE_MUTEX,
    TYPE_COND,
    TYPE_AWAIT,
+   TYPE_GENERATOR,
 
    // Helper Types
    TYPE_FUTURE,
@@ -375,5 +376,12 @@ typedef struct Exception
    struct Catch *catched;
    struct List *finally; // body of finally — NULL if absent
 } Exception;
+
+typedef struct Generator
+{
+   char *ident;
+   struct ForLoop *loop;
+   ASTnode *cond;
+} Generator;
 
 #endif // CORES_TYPE_H

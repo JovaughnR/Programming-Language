@@ -64,54 +64,51 @@
      RBRACE = 280,
      FROM = 281,
      CLASS = 282,
-     SWITCH = 283,
-     CASE = 284,
-     DEFAULT = 285,
-     ASYNC = 286,
-     AWAIT = 287,
-     IDENT = 288,
-     STRING = 289,
-     INTEGER = 290,
-     DECIMAL = 291,
-     LSHIFT = 292,
-     RSHIFT = 293,
-     PLUS = 294,
-     MINUS = 295,
-     STAR = 296,
-     DIVIDE = 297,
-     MODULO = 298,
-     FLOOR = 299,
-     EXPONENT = 300,
-     BITAND = 301,
-     BITOR = 302,
-     BITXOR = 303,
-     MINUS_EQ = 304,
-     DIV_EQ = 305,
-     BITNOT = 306,
-     MUL_EQ = 307,
-     MOD_EQ = 308,
-     LE = 309,
-     IN = 310,
-     EXP_EQ = 311,
-     FLDIV_EQ = 312,
-     R_SHIFT_EQ = 313,
-     XOR_EQ = 314,
-     NONE = 315,
-     AND_EQ = 316,
-     OR_EQ = 317,
-     TRUE = 318,
-     FALSE = 319,
-     LAND = 320,
-     PLUS_EQ = 321,
-     INVERT = 322,
-     EQ = 323,
-     NE = 324,
-     LT = 325,
-     GT = 326,
-     GE = 327,
-     LOR = 328,
-     FSTRING = 329,
-     L_SHIFT_EQ = 330
+     ASYNC = 283,
+     AWAIT = 284,
+     IDENT = 285,
+     STRING = 286,
+     INTEGER = 287,
+     DECIMAL = 288,
+     LSHIFT = 289,
+     RSHIFT = 290,
+     PLUS = 291,
+     MINUS = 292,
+     STAR = 293,
+     DIVIDE = 294,
+     MODULO = 295,
+     FLOOR = 296,
+     EXPONENT = 297,
+     BITAND = 298,
+     BITOR = 299,
+     BITXOR = 300,
+     MINUS_EQ = 301,
+     DIV_EQ = 302,
+     BITNOT = 303,
+     MUL_EQ = 304,
+     MOD_EQ = 305,
+     LE = 306,
+     IN = 307,
+     EXP_EQ = 308,
+     FLDIV_EQ = 309,
+     R_SHIFT_EQ = 310,
+     XOR_EQ = 311,
+     NONE = 312,
+     AND_EQ = 313,
+     OR_EQ = 314,
+     TRUE = 315,
+     FALSE = 316,
+     LAND = 317,
+     PLUS_EQ = 318,
+     INVERT = 319,
+     EQ = 320,
+     NE = 321,
+     LT = 322,
+     GT = 323,
+     GE = 324,
+     LOR = 325,
+     FSTRING = 326,
+     L_SHIFT_EQ = 327
    };
 #endif
 /* Tokens.  */
@@ -140,54 +137,51 @@
 #define RBRACE 280
 #define FROM 281
 #define CLASS 282
-#define SWITCH 283
-#define CASE 284
-#define DEFAULT 285
-#define ASYNC 286
-#define AWAIT 287
-#define IDENT 288
-#define STRING 289
-#define INTEGER 290
-#define DECIMAL 291
-#define LSHIFT 292
-#define RSHIFT 293
-#define PLUS 294
-#define MINUS 295
-#define STAR 296
-#define DIVIDE 297
-#define MODULO 298
-#define FLOOR 299
-#define EXPONENT 300
-#define BITAND 301
-#define BITOR 302
-#define BITXOR 303
-#define MINUS_EQ 304
-#define DIV_EQ 305
-#define BITNOT 306
-#define MUL_EQ 307
-#define MOD_EQ 308
-#define LE 309
-#define IN 310
-#define EXP_EQ 311
-#define FLDIV_EQ 312
-#define R_SHIFT_EQ 313
-#define XOR_EQ 314
-#define NONE 315
-#define AND_EQ 316
-#define OR_EQ 317
-#define TRUE 318
-#define FALSE 319
-#define LAND 320
-#define PLUS_EQ 321
-#define INVERT 322
-#define EQ 323
-#define NE 324
-#define LT 325
-#define GT 326
-#define GE 327
-#define LOR 328
-#define FSTRING 329
-#define L_SHIFT_EQ 330
+#define ASYNC 283
+#define AWAIT 284
+#define IDENT 285
+#define STRING 286
+#define INTEGER 287
+#define DECIMAL 288
+#define LSHIFT 289
+#define RSHIFT 290
+#define PLUS 291
+#define MINUS 292
+#define STAR 293
+#define DIVIDE 294
+#define MODULO 295
+#define FLOOR 296
+#define EXPONENT 297
+#define BITAND 298
+#define BITOR 299
+#define BITXOR 300
+#define MINUS_EQ 301
+#define DIV_EQ 302
+#define BITNOT 303
+#define MUL_EQ 304
+#define MOD_EQ 305
+#define LE 306
+#define IN 307
+#define EXP_EQ 308
+#define FLDIV_EQ 309
+#define R_SHIFT_EQ 310
+#define XOR_EQ 311
+#define NONE 312
+#define AND_EQ 313
+#define OR_EQ 314
+#define TRUE 315
+#define FALSE 316
+#define LAND 317
+#define PLUS_EQ 318
+#define INVERT 319
+#define EQ 320
+#define NE 321
+#define LT 322
+#define GT 323
+#define GE 324
+#define LOR 325
+#define FSTRING 326
+#define L_SHIFT_EQ 327
 
 
 
@@ -199,7 +193,7 @@ typedef union YYSTYPE
    void *generic;
 }
 /* Line 1529 of yacc.c.  */
-#line 203 "y.tab.h"
+#line 197 "y.tab.h"
 	YYSTYPE;
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
 # define YYSTYPE_IS_DECLARED 1

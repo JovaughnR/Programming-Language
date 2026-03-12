@@ -197,6 +197,17 @@ void file_close(void *file)
    return;
 }
 
+static void generator_free(Generator *generator)
+{
+   if (!generator)
+      return;
+
+   free(generator->ident);
+   for_free(generator->loop);
+   ast_free(generator->cond);
+   free(generator);
+}
+
 static void ref_free(Object *rc, DataType type)
 {
    if (!rc)
@@ -266,6 +277,10 @@ static void ref_free(Object *rc, DataType type)
    case TYPE_FUTURE:
       future_free((Future *)object);
       object = NULL;
+      break;
+
+   case TYPE_GENERATOR:
+      generator_free((Generator *)object);
       break;
 
    default:
@@ -497,6 +512,7 @@ void data_free(const void *data)
    case TYPE_COND:
    case TYPE_FUTURE:
    case TYPE_FILE:
+   case TYPE_GENERATOR:
       ref_free((Object *)d->ref, d->type);
       break;
 
