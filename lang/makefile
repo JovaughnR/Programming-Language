@@ -1,6 +1,6 @@
 CC = gcc
 CURL_PREFIX = $(shell brew --prefix curl)
-CFLAGS = -g -Wall -I./include -I./lib -I/opt/homebrew/include -I$(CURL_PREFIX)/include
+CFLAGS = -fsanitize=address -g -Wall -I./include -I./lib -I/opt/homebrew/include -I$(CURL_PREFIX)/include
 LIBS = -lm -L/opt/homebrew/lib -lgmp -L$(CURL_PREFIX)/lib -lcurl -lsqlite3 -lpthread
 
 SOURCES = ./parse/y.tab.c ./parse/lex.yy.c \

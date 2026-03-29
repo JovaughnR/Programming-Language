@@ -78,5 +78,5 @@ Data *builtin_dict(Data *data);
 Data *builtin_max(struct List *args);
 Data *builtin_min(struct List *args);
 Data *builtin_sum(struct List *args);
-
+Data *builtin_filter(Data *func, Data *iterable);
 #endif // METHOD_H

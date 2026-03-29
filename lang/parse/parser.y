@@ -25,6 +25,8 @@
    static int f_depth = 0; 
    // Loop Depth
    static int l_depth = 0; 
+   // Line Number
+   static int line = -1;
 
 %}
 
@@ -102,9 +104,11 @@ block
    | NL block                              { $$ = $2; }
    | ':' simple_stmt                       { $$ = list_create(1); list_append($2, $$); }
    ;
+
 stmt_list
    : statement                             { $$ = list_create(__len__); list_append($1, $$); }
-   | stmt_list statement                   { list_append($2, $1); $$ = $1; } ;
+   | stmt_list statement                   { list_append($2, $1); $$ = $1; } 
+   ;
 
 statement
    : simple_stmt                           { $$ = $1; }
@@ -115,33 +119,33 @@ statement
    ; 
 
 simple_stmt
-   : assignment ';'                        { $$ = createStatement(STMT_ASMT, $1, yylineno-1); }
-   | value ';'                             { $$ = createStatement(STMT_EXPR, $1, yylineno-1); }
-   | GLOBAL IDENT ';'                      { $$ = createStatement(STMT_GLOBAL, $2, yylineno-1); }
-   | NONLOCAL IDENT ';'                    { $$ = createStatement(STMT_NONLOCAL, $2, yylineno-1); }
-   | RETURN value ';'                      { $$ = createStatement(STMT_RETURN, createReturn($2, f_depth), yylineno-1); }
-   | RETURN ';'                            { $$ = createStatement(STMT_RETURN, createReturn(NULL, f_depth), yylineno-1); }
-   | CONTINUE ';'                          { $$ = createStatement(STMT_CONTINUE, createJump(l_depth, 0), yylineno-1); }
-   | BREAK ';'                             { $$ = createStatement(STMT_BREAK, createJump(l_depth, 1), yylineno-1); }
-   | THROW value ';'                       { $$ = createStatement(STMT_THROW, $2, yylineno-1); }
+   : assignment ';'                        { $$ = createStatement(STMT_ASMT, $1, yylineno); }
+   | value ';'                             { $$ = createStatement(STMT_EXPR, $1, yylineno); }
+   | GLOBAL IDENT ';'                      { $$ = createStatement(STMT_GLOBAL, $2, yylineno); }
+   | NONLOCAL IDENT ';'                    { $$ = createStatement(STMT_NONLOCAL, $2, yylineno); }
+   | RETURN value ';'                      { $$ = createStatement(STMT_RETURN, createReturn($2, f_depth, yylineno), yylineno); }
+   | RETURN ';'                            { $$ = createStatement(STMT_RETURN, createReturn(NULL, f_depth, yylineno), yylineno); }
+   | CONTINUE ';'                          { $$ = createStatement(STMT_CONTINUE, createJump(l_depth, 0, yylineno), yylineno); }
+   | BREAK ';'                             { $$ = createStatement(STMT_BREAK, createJump(l_depth, 1, yylineno), yylineno); }
+   | THROW value ';'                       { $$ = createStatement(STMT_THROW, $2, yylineno); }
    ;
 
 compound_stmt
-   : { $<generic>$ = (void*)(long)yylineno; } func        { $$ = createStatement(STMT_FUNC, $2, (int)(long)$<generic>1); }
-   | { $<generic>$ = (void*)(long)yylineno; } class       { $$ = createStatement(STMT_CLASS, $2, (int)(long)$<generic>1); }
-   | { $<generic>$ = (void*)(long)yylineno; } if_stmt     { $$ = createStatement(STMT_FLOW, $2, (int)(long)$<generic>1); }
-   | { $<generic>$ = (void*)(long)yylineno; } while_stmt  { $$ = createStatement(STMT_WHILE, $2, (int)(long)$<generic>1); }
-   | { $<generic>$ = (void*)(long)yylineno; } for_stmt    { $$ = createStatement(STMT_FOR, $2, (int)(long)$<generic>1); }
-   | { $<generic>$ = (void*)(long)yylineno; } import      { $$ = createStatement(STMT_IMPORT, $2, (int)(long)$<generic>1); }
-   | { $<generic>$ = (void*)(long)yylineno; } exception   { $$ = createStatement(STMT_EXCEPTION, $2, (int)(long)$<generic>1); }
-   | { $<generic>$ = (void*)(long)yylineno; } enum        { $$ = createStatement(STMT_ENUM, $2, (int)(long)$<generic>1); }
+   : { line = yylineno; } func        { $$ = createStatement(STMT_FUNC, $2, line); }
+   | { line = yylineno; } class       { $$ = createStatement(STMT_CLASS, $2, line); }
+   | { line = yylineno; } if_stmt     { $$ = createStatement(STMT_FLOW, $2, line); }
+   | { line = yylineno; } while_stmt  { $$ = createStatement(STMT_WHILE, $2, line); }
+   | { line = yylineno; } for_stmt    { $$ = createStatement(STMT_FOR, $2, line); }
+   | { line = yylineno; } import      { $$ = createStatement(STMT_IMPORT, $2, line); }
+   | { line = yylineno; } exception   { $$ = createStatement(STMT_EXCEPTION, $2, line); }
+   | { line = yylineno; } enum        { $$ = createStatement(STMT_ENUM, $2, line); }
    ;
 
 import
    : IMPORT module ';'                                     { $$ = createImport($2, NULL, NULL, 0); }
    | IMPORT module AS IDENT ';'                            { $$ = createImport($2, NULL, $4, 0); }
    | FROM module IMPORT import_items ';'                   { $$ = createImport($2, $4, NULL, 0); }
-   | FROM module IMPORT STAR ';'                            { $$ = createImport($2, NULL, NULL, 1); ast_free($4); }
+   | FROM module IMPORT STAR ';'                           { $$ = createImport($2, NULL, NULL, 1); ast_free($4); }
    ;
 
 module
@@ -199,7 +203,7 @@ equals
 
 
 value
-   : ternary                               { $$ = $1; }
+   : ternary                                { $$ = $1; }
    ;
 
 ternary

@@ -115,21 +115,23 @@ FSTRING_SQ   f\'([^'\\]|\\.)*\'
 %%
 
    /* Newlines - returned as NL for statement termination */
-\n          { column = 0; BEGIN(AFTER_SEMI); }
+\n                     { column = 0; BEGIN(AFTER_SEMI); }
 
 <AFTER_SEMI>[ \t\r]+   { /* skip whitespace */ }
+<AFTER_SEMI>\n         { /* skip blank lines, stay in AFTER_SEMI */ }
 <AFTER_SEMI>else       { BEGIN(INITIAL); return ELSE; }
 <AFTER_SEMI>elif       { BEGIN(INITIAL); return ELIF; }
 <AFTER_SEMI>catch      { BEGIN(INITIAL); return CATCH; }
 <AFTER_SEMI>finally     { BEGIN(INITIAL); return FINALLY; }
-<AFTER_SEMI>as         { BEGIN(INITIAL); return AS; }        /* ← add this */
-<AFTER_SEMI>\n         { BEGIN(INITIAL); return NL; }
+<AFTER_SEMI>as         { BEGIN(INITIAL); return AS; }
+<AFTER_SEMI>"}"        { BEGIN(AFTER_SEMI); return RBRACE; }
+<AFTER_SEMI>"{"        { BEGIN(INITIAL); return LBRACE; }
 <AFTER_SEMI>.          { BEGIN(INITIAL); yyless(0); return NL; }
 
 
    /* Block delimiters */
 "{"         { return LBRACE; }
-"}"         { return RBRACE; }
+"}"         { BEGIN(AFTER_SEMI); return RBRACE; }
 
 ";"         { return ';'; }
 

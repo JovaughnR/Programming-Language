@@ -81,7 +81,7 @@ static void instance_free(Instance *inst)
       return;
 
    // Don't free the class
-   inst->class = NULL; // Set the reference to NULL
+   data_free(inst->class);
    dict_free(inst->attributes);
    free(inst);
 }
@@ -199,13 +199,13 @@ void file_close(void *file)
 
 static void generator_free(Generator *generator)
 {
-   if (!generator)
-      return;
+   // if (!generator)
+   //    return;
 
-   free(generator->ident);
-   for_free(generator->loop);
-   ast_free(generator->cond);
-   free(generator);
+   // free(generator->ident);
+   // for_free(generator->loop);
+   // ast_free(generator->cond);
+   // free(generator);
 }
 
 static void ref_free(Object *rc, DataType type)
@@ -251,6 +251,7 @@ static void ref_free(Object *rc, DataType type)
    case TYPE_FILE:
       file_close((FILE *)object);
       break;
+
    case TYPE_DB:
       sqlite3_close((sqlite3 *)object);
       break;

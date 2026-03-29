@@ -407,8 +407,9 @@ Assignment *createAssignment(List *vars, List *values, ASTnode *op)
    return asmt;
 }
 
-ASTnode *createReturn(ASTnode *astNode, int funcDepth)
+ASTnode *createReturn(ASTnode *astNode, int funcDepth, int line)
 {
+   g_thrown.lineno = line;
    if (!funcDepth)
    {
       throw_error(ERROR_SYNTAX, "return outside function");
@@ -417,8 +418,9 @@ ASTnode *createReturn(ASTnode *astNode, int funcDepth)
    return astNode;
 }
 
-void *createJump(int loopDepth, int jump)
+void *createJump(int loopDepth, int jump, int line)
 {
+   g_thrown.lineno = line;
    if (!loopDepth)
    {
       if (jump == 0)
@@ -446,7 +448,7 @@ Class *createClass(char *var, List *statements, List *parents)
    return class;
 }
 
-Instance *createInstance(Class *class)
+Instance *createInstance(Data *class)
 {
    if (!class)
       return NULL;
@@ -456,7 +458,7 @@ Instance *createInstance(Class *class)
       return NULL;
 
    // custom classes or builtin data types
-   instance->class = class;
+   instance->class = cloneData(class);
    instance->attributes = dict_create(__size__);
 
    return instance;

@@ -263,13 +263,13 @@ Method *createBuiltins();
 
 Assignment *createAssignment(struct List *vars, struct List *values, ASTnode *op);
 
-ASTnode *createReturn(ASTnode *astNode, int funcDepth);
+ASTnode *createReturn(ASTnode *astNode, int funcDepth, int line);
 
-void *createJump(int loopDepth, int jump);
+void *createJump(int loopDepth, int jump, int line);
 
 Class *createClass(char *var, struct List *statements, struct List *parents);
 
-Instance *createInstance(Class *class);
+Instance *createInstance(Data *class);
 
 Slice *createSlice(ASTnode *start, ASTnode *stop, ASTnode *step);
 

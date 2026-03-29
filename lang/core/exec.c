@@ -556,6 +556,7 @@ static void executeEnum(Enum *e, Runtime *rt)
 
       counter++;
    }
+   env_save(cloneData(e->name), createData(TYPE_ENUM, e), rt->env);
 }
 
 Status executeStatement(Statement *stmt, void **returns, Runtime *rt)
@@ -652,6 +653,29 @@ static Data *executeAttribute(Attribute *attr, Runtime *rt)
       return NULL;
 
    Data *object = executeAST(attr->object, rt);
+
+   if (object->type == TYPE_ENUM)
+   {
+      Enum *e = (Enum *)object->any;
+
+      for (int i = 0; i < e->items->length; i++)
+      {
+         EnumItem *item = (EnumItem *)e->items->items[i];
+         if (strcmp(item->name, attr->attrib->str) == 0)
+         {
+            int value = item->hasValue ? *executeAST(item->value, rt)->atom : i;
+            data_free(object);
+            return createData(TYPE_INT, &value);
+         }
+      }
+
+      data_free(object);
+      throw_error(
+          ERROR_ATTRIBUTE,
+          "enum '%s' has no attribute '%s'",
+          e->name->str, attr->attrib->str);
+      return createData(TYPE_NONE, NULL);
+   }
 
    // Module attribute access (e.g. math.pi, math.sqrt)
    if (object->type == TYPE_RUNTIME)
@@ -904,6 +928,7 @@ Data *executeLookUp(char *var, Runtime *rt)
 {
    if (!var || !rt)
       return createData(TYPE_NONE, NULL);
+
    Data *key = createData(TYPE_STR, var);
    Data *result = getData(key, rt);
    data_free(key);

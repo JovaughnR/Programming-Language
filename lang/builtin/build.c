@@ -45,6 +45,7 @@ const BuiltinInfo BUILTIN[] = {
     {BUILTIN_ROUND, "round", 1, 2},
     {BUILTIN_SORTED, "sorted", 1, 2},
     {BUILTIN_REVERSED, "reversed", 1, 1},
+    {BUILTIN_FILTER, "filter", 2, 2},
 };
 
 #define BUILTIN_COUNT (sizeof(BUILTIN) / sizeof(BuiltinInfo))
@@ -292,6 +293,8 @@ Data *dispatchBuiltin(BuiltinType type, List *args, Dict *kwargs, Runtime *rt)
       return builtin_min(args);
    case BUILTIN_SUM:
       return builtin_sum(args);
+   case BUILTIN_FILTER:
+      return builtin_filter(ARG(0), ARG(1));
 
    default:
       throw_error(ERROR_SYNTAX, "unknown builtin type %d", type);

@@ -14,6 +14,7 @@
 #include "../core/lib/error.h"
 #include "../core/lib/type.h"
 #include "../core/lib/maloc.h"
+#include "../core/lib/class.h"
 #include "../core/lib/daloc.h"
 #include "../core/lib/list.h"
 #include "../core/lib/utils.h"
@@ -22,6 +23,8 @@
 #include "../core/lib/str.h"
 #include "../core/lib/set.h"
 #include "../core/lib/dict.h"
+
+extern Runtime *rt;
 
 //=========================================================
 //  I/O Functions
@@ -121,7 +124,7 @@ Data *builtin_type(Data *obj)
    {
       Instance *inst = INST_PTR(obj);
       char buffer[256];
-      snprintf(buffer, sizeof(buffer), "<class '%s'>", inst->class->name->str);
+      snprintf(buffer, sizeof(buffer), "<class '%s'>", INST_CLASS(inst)->name->str);
       type_name = strdup(buffer);
    }
    else
@@ -863,4 +866,81 @@ Data *builtin_sum(List *args)
       }
    }
    return total;
+}
+
+static Data *filter_str(const char *str, Data *func)
+{
+   size_t len = strlen(str);
+   List *result = list_create((int)len);
+
+   for (size_t i = 0; i < len; i++)
+   {
+      char *ch = str_char_at(str, (int)i);
+      Data *arg = createData(TYPE_STR, ch);
+      free(ch);
+
+      List *args = list_create(1);
+      list_append(cloneData(arg), args);
+      Data *res = executeFunction(func, args, rt);
+      list_free(args, data_free);
+
+      if (res && dataToBool(res))
+         list_append(arg, result);
+      else
+         data_free(arg);
+
+      if (res)
+         data_free(res);
+   }
+
+   return createData(TYPE_LIST, result);
+}
+
+static Data *filter_iterable(void **arr, int len, Data *func)
+{
+   List *result = list_create(len);
+
+   for (int i = 0; i < len; i++)
+   {
+      List *args = list_create(1);
+      Data *arg = arr[i];
+      if (!arg)
+         continue;
+
+      list_append(arg, args);
+      Data *res = executeFunction(func, args, rt);
+      if (res && dataToBool(res))
+         list_append(cloneData(arg), result);
+
+      data_free(res);
+      list_free(args, data_free);
+   }
+
+   return createData(TYPE_LIST, result);
+}
+
+Data *builtin_filter(Data *func, Data *iterable)
+{
+   switch (iterable->type)
+   {
+   case TYPE_STR:
+      return filter_str(iterable->str, func);
+   case TYPE_LIST:
+   {
+      void **items = LIST_PTR(iterable)->items;
+      int length = LIST_PTR(iterable)->length;
+      return filter_iterable(items, length, func);
+   }
+   case TYPE_SET:
+   {
+      void **items = SET_PTR(iterable)->bucket;
+      int length = SET_PTR(iterable)->size;
+      return createData(TYPE_SET, filter_iterable(items, length, func));
+   }
+   default:
+      throw_error(
+          ERROR_TYPE,
+          "'%s' object is not iterable", getDataType(iterable->type));
+      return createData(TYPE_NONE, NULL);
+   }
 }

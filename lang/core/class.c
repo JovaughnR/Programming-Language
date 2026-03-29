@@ -349,7 +349,7 @@ static Data *handle_class_call(Data *callee, List *args, Dict *kwargs, Runtime *
       classInEnv = getData(cls->name, rt);
    }
 
-   Instance *newInst = createInstance(CLASS_PTR(classInEnv));
+   Instance *newInst = createInstance(classInEnv);
    Data *result = createData(TYPE_INSTANCE, newInst);
 
    Data *ctorName = createData(TYPE_STR, CONSTRUCTOR_NAME);
@@ -460,7 +460,7 @@ static Data *handle_function_call(Data *callee, List *args, Dict *kwargs,
 
 Data *executeFunction(Data *func_data, List *args, Runtime *rt)
 {
-   if (!func_data || func_data->type != TYPE_FUNCTION)
+   if (!func_data || FUNC_PTR(func_data) == NULL)
       return createData(TYPE_NONE, NULL);
    return exec_func(FUNC_PTR(func_data), args, NULL, NULL, rt);
 }

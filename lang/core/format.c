@@ -258,7 +258,7 @@ char *instanceToString(Instance *inst)
    if (!inst->class)
       return strdup("<instance with NULL class>");
 
-   Class *cls = inst->class;
+   Class *cls = CLASS_PTR(inst->class);
 
    // Check if class has a name
    if (!cls || !cls->name || !cls->name->str)

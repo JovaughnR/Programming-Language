@@ -27,6 +27,7 @@ const ErrorEntry table[] = {
     {"ImportError", ERROR_IMPORT},
     {"IOError", ERROR_IO},
     {"AssertionError", ERROR_ASSERTION},
+    {"Error", ERROR_ALL},
     {NULL, ERROR_NONE},
 };
 

@@ -420,7 +420,7 @@ Data *getAttribute(Data *object, Data *name, Runtime *rt)
       Instance *inst = INST_PTR(object);
       attri = dict_get(name, inst->attributes);
       if (!attri)
-         attri = get_from_mro(inst->class, name);
+         attri = get_from_mro(CLASS_PTR(inst->class), name);
       break;
    }
 
@@ -483,7 +483,7 @@ Data *getAttribute(Data *object, Data *name, Runtime *rt)
       if (object->type == TYPE_INSTANCE)
       {
          Instance *inst = INST_PTR(object);
-         dataType = inst->class->name->str;
+         dataType = INST_CLASS(inst)->name->str;
       }
       else
          dataType = getDataType(object->type);

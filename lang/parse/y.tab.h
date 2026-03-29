@@ -188,7 +188,7 @@
 
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 typedef union YYSTYPE
-#line 31 "./parse/parser.y"
+#line 33 "./parse/parser.y"
 {
    void *generic;
 }

@@ -23,6 +23,7 @@
 #define FUNC_PTR(d) (IS_FUNCTION(d) ? (Function *)(d)->ref->object : NULL)
 #define CLASS_PTR(d) (IS_CLASS(d) ? (Class *)(d)->ref->object : NULL)
 #define INST_PTR(d) (IS_INSTANCE(d) ? (Instance *)(d)->ref->object : NULL)
+#define INST_CLASS(inst) (CLASS_PTR((inst)->class))
 
 typedef enum
 {
@@ -152,7 +153,7 @@ typedef struct Attribute
 
 typedef struct Instance
 {
-   struct Class *class;
+   struct Data *class;
    struct Dict *attributes;
 } Instance;
 

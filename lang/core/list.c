@@ -416,7 +416,7 @@ void list_free(List *list, void (*item_free)(const void *))
    free(list);
 
    /************************************************
-    *  caller responsible implementing own freePair
+    *  caller responsible implementing own item_free
     ************************************************/
 }
 
