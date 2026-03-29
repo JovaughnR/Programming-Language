@@ -44,6 +44,7 @@ typedef struct ThrownError
    int active;         // 1 if in try block
    int error;          // 1 if an error occured
    int lineno;         // line where error occured
+   char filename[256]; // file where error occured
 } ThrownError;
 
 // Global thrown error state — checked by the interpreter after each statement

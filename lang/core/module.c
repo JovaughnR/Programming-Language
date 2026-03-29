@@ -326,4 +326,5 @@ void executeImport(Import *import, Runtime *rt)
    Data *key = import->alias ? import->alias : import->module;
    Data *value = createData(TYPE_RUNTIME, module_rt);
    env_save(key, value, rt->env);
+   g_thrown.lineno = 0;
 }

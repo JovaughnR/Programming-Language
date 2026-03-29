@@ -158,6 +158,8 @@ void clear_error(void)
    g_thrown.message[0] = '\0';
    g_thrown.active = 0;
    g_thrown.error = 0;
+   g_thrown.lineno = -1;
+   g_thrown.filename[0] = '\0';
 }
 
 static Status handleCatchBlock(Catch *catch, void **returns, Runtime *rt)
